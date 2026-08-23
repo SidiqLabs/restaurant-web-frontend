@@ -1,6 +1,7 @@
 // src/app/profile/page.tsx
 'use client';
 
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ProfileLayout } from '@/components/profile/ProfileLayout';
 import { useProfileQuery } from '@/services/queries/auth';
 
@@ -8,7 +9,7 @@ const PAGE_WRAP =
   'mx-auto w-full max-w-360 px-6 pt-12 md:px-10 lg:px-16 xl:px-30';
 const CARD = 'rounded-2xl bg-white p-6 shadow-sm';
 
-const ProfilePage = () => {
+const ProfileContent = () => {
   const { data: profile, isLoading, isError } = useProfileQuery();
   const user = profile?.data;
 
@@ -34,6 +35,14 @@ const ProfilePage = () => {
   }
 
   return <ProfileLayout user={user} />;
+};
+
+const ProfilePage = () => {
+  return (
+    <ProtectedRoute>
+      <ProfileContent />
+    </ProtectedRoute>
+  );
 };
 
 export default ProfilePage;

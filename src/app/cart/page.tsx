@@ -1,7 +1,13 @@
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+
 import CartClient from './CartClient';
 
 const CartPage = () => {
-  return <CartClient />;
+  return (
+    <ProtectedRoute>
+      <CartClient />
+    </ProtectedRoute>
+  );
 };
 
 export default CartPage;

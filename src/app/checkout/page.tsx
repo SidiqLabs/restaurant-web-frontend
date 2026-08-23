@@ -1,7 +1,13 @@
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+
 import CheckoutClient from './CheckoutClient';
 
 const CheckoutPage = () => {
-  return <CheckoutClient />;
+  return (
+    <ProtectedRoute>
+      <CheckoutClient />
+    </ProtectedRoute>
+  );
 };
 
 export default CheckoutPage;

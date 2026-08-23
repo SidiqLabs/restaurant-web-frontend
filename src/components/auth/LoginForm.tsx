@@ -10,6 +10,7 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { getSafeInternalRedirectPath } from '@/lib/utils';
 import { authTokenStorage } from '@/services/api/axios';
 import {
   authQueryKeys,
@@ -22,6 +23,13 @@ import type { LoginRequest } from '@/types/auth';
 type FieldErrors = Partial<Record<'email' | 'password', string>>;
 
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
+
+const getPostLoginRedirectPath = () => {
+  if (typeof window === 'undefined') return '/';
+
+  const params = new URLSearchParams(window.location.search);
+  return getSafeInternalRedirectPath(params.get('redirect'), '/');
+};
 
 const LoginForm = () => {
   const router = useRouter();
@@ -76,7 +84,7 @@ const LoginForm = () => {
       // best effort
     }
 
-    router.replace('/');
+    router.replace(getPostLoginRedirectPath());
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {

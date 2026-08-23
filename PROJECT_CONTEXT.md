@@ -23,7 +23,7 @@ Status: ✅ COMPLETED (MVP + UI Polish + Review Feature)
 
 ## Backend
 
-- Base URL: https://restaurant-be-400174736012.asia-southeast2.run.app
+- Base URL: https://be-restaurant-production.up.railway.app
 - All API requests start with `/api/...`
 - NO hard-coded API URL
 - Uses `.env.local` with `NEXT_PUBLIC_API_BASE_URL`
@@ -171,6 +171,17 @@ No violations.
 - No CSR/SSR mixing without reason
 - Build passes
 - Dead code cleaned in final pass
+
+---
+
+## Protected Route / Authentication UX
+
+- Genuinely protected routes redirect unauthenticated users to Sign In instead of rendering raw protected-API 401 UI.
+- Preserve the intended internal route with `/auth/login?redirect=<internal-path>` and return there after successful login.
+- Protected server queries must be gated while auth is unresolved or when no token exists.
+- Auth-unresolved state must not cause premature redirects or visible protected-content flashes.
+- Redirect destinations must be validated internal application paths; invalid or external values fall back safely.
+- Preserve working authenticated behavior and avoid unrelated global auth refactors.
 
 ---
 
