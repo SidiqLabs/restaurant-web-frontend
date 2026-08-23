@@ -376,7 +376,7 @@ const CheckoutClient = () => {
   const displayPhone = values.phone.trim();
 
   return (
-    <main className='w-full bg-muted/30 px-6 pb-16 pt-10 lg:px-16'>
+    <main className='w-full bg-muted/30 px-4 pb-16 pt-10 sm:px-6 lg:px-16'>
       <ToastViewport>
         <Toast
           open={toast.open}
@@ -392,13 +392,13 @@ const CheckoutClient = () => {
       <div className={PAGE_CONTAINER}>
         <h1 className='text-3xl font-semibold tracking-tight'>Checkout</h1>
 
-        <div className='mt-8 grid gap-5 lg:grid-cols-[590px_1fr]'>
+        <div className='mt-8 grid min-w-0 gap-5 lg:grid-cols-[590px_minmax(0,1fr)]'>
           {/* LEFT */}
-          <div className='space-y-5'>
+          <div className='min-w-0 space-y-5'>
             {/* Delivery Address */}
-            <section className='rounded-2xl border bg-card p-5 shadow-sm'>
-              <div className='flex items-start'>
-                <div className='min-w-0 max-w-[430px]'>
+            <section className='rounded-2xl border bg-card p-4 shadow-sm sm:p-5'>
+              <div className='flex min-w-0 items-start'>
+                <div className='min-w-0 max-w-[430px] flex-1'>
                   <div className='flex items-center gap-2'>
                     <Image
                       src='/assets/icons/marker-pin-2.svg'
@@ -504,7 +504,7 @@ const CheckoutClient = () => {
             </section>
 
             {/* Items */}
-            <section className='rounded-2xl border bg-card p-5 shadow-sm'>
+            <section className='rounded-2xl border bg-card p-4 shadow-sm sm:p-5'>
               <div className='mt-4'>
                 {isCartLoading ? (
                   <p className='text-sm text-muted-foreground'>
@@ -523,24 +523,25 @@ const CheckoutClient = () => {
                 ) : (
                   <div className='space-y-5'>
                     {cartData?.cart.map((group) => (
-                      <div key={group.restaurant.id} className='space-y-3'>
-                        <div className='flex items-center justify-between'>
-                          <div className='flex items-center gap-2'>
+                      <div key={group.restaurant.id} className='min-w-0 space-y-3'>
+                        <div className='flex min-w-0 items-center justify-between gap-3'>
+                          <div className='flex min-w-0 flex-1 items-center gap-2'>
                             <Image
                               src='/assets/icons/restaurant.svg'
                               alt=''
                               aria-hidden='true'
                               width={32}
                               height={32}
+                              className='shrink-0'
                             />
-                            <span className='text-sm font-semibold'>
+                            <span className='min-w-0 truncate text-sm font-semibold'>
                               {group.restaurant.name}
                             </span>
                           </div>
 
                           <Link
                             href='/'
-                            className='rounded-full border bg-background px-4 py-2 text-xs font-medium hover:bg-muted'
+                            className='shrink-0 rounded-full border bg-background px-4 py-2 text-xs font-medium hover:bg-muted'
                           >
                             Add item
                           </Link>
@@ -580,12 +581,12 @@ const CheckoutClient = () => {
                                   }
                                 }}
                                 className={cn(
-                                  'flex items-center justify-between gap-4 rounded-2xl bg-background p-3',
+                                  'flex min-w-0 items-center gap-2 rounded-2xl bg-background p-2 sm:gap-4 sm:p-3',
                                   'cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring'
                                 )}
                               >
-                                <div className='flex items-center gap-3'>
-                                  <div className='relative h-16 w-16 overflow-hidden rounded-xl bg-muted'>
+                                <div className='flex min-w-0 flex-1 items-center gap-2 sm:gap-3'>
+                                  <div className='relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-16 sm:w-16'>
                                     <Image
                                       src={item.menu.image}
                                       alt={item.menu.foodName}
@@ -595,17 +596,17 @@ const CheckoutClient = () => {
                                     />
                                   </div>
 
-                                  <div className='min-w-0'>
-                                    <p className='truncate text-sm font-medium'>
+                                  <div className='min-w-0 flex-1'>
+                                    <p className='whitespace-normal break-words text-sm font-medium leading-snug sm:truncate'>
                                       {item.menu.foodName}
                                     </p>
-                                    <p className='text-sm font-semibold'>
+                                    <p className='mt-0.5 truncate text-sm font-semibold'>
                                       {moneyIdr(item.menu.price)}
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className='flex items-center gap-2'>
+                                <div className='flex shrink-0 items-center gap-1.5 sm:gap-2'>
                                   <button
                                     type='button'
                                     className='inline-flex h-9 w-9 items-center justify-center rounded-full border hover:bg-muted disabled:opacity-60'
@@ -634,7 +635,7 @@ const CheckoutClient = () => {
                                     )}
                                   </button>
 
-                                  <span className='min-w-6 text-center text-sm font-semibold'>
+                                  <span className='min-w-5 text-center text-sm font-semibold sm:min-w-6'>
                                     {item.quantity}
                                   </span>
 
@@ -667,13 +668,14 @@ const CheckoutClient = () => {
                                   <button
                                     type='button'
                                     className={cn(
-                                      'ml-2 text-xs transition',
+                                      'overflow-hidden whitespace-nowrap text-xs transition-all',
                                       'text-muted-foreground hover:text-destructive hover:underline disabled:opacity-60',
                                       isActive
-                                        ? 'visible opacity-100'
-                                        : 'invisible opacity-0'
+                                        ? 'ml-2 w-auto opacity-100'
+                                        : 'ml-0 w-0 opacity-0 pointer-events-none'
                                     )}
                                     aria-hidden={!isActive}
+                                    tabIndex={isActive ? 0 : -1}
                                     disabled={disableItemActions}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -696,8 +698,8 @@ const CheckoutClient = () => {
           </div>
 
           {/* RIGHT */}
-          <aside>
-            <section className='rounded-2xl border bg-card p-5 shadow-sm'>
+          <aside className='min-w-0'>
+            <section className='rounded-2xl border bg-card p-4 shadow-sm sm:p-5'>
               <h2 className='text-sm font-semibold'>Payment Method</h2>
 
               <div className='mt-4 space-y-3'>
@@ -705,14 +707,14 @@ const CheckoutClient = () => {
                   <label
                     key={opt.value}
                     className={cn(
-                      'flex cursor-pointer items-center justify-between rounded-2xl border bg-background px-4 py-3',
+                      'flex min-w-0 cursor-pointer items-center justify-between gap-3 rounded-2xl border bg-background px-4 py-3',
                       values.paymentMethod === opt.value
                         ? 'border-primary'
                         : 'border-input'
                     )}
                   >
-                    <div className='flex items-center gap-3'>
-                      <div className='relative h-8 w-8 overflow-hidden rounded-lg bg-muted'>
+                    <div className='flex min-w-0 flex-1 items-center gap-3'>
+                      <div className='relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-muted'>
                         <Image
                           src={opt.icon}
                           alt={opt.label}
@@ -721,7 +723,9 @@ const CheckoutClient = () => {
                           className='object-contain p-1'
                         />
                       </div>
-                      <span className='text-sm font-medium'>{opt.label}</span>
+                      <span className='min-w-0 truncate text-sm font-medium'>
+                        {opt.label}
+                      </span>
                     </div>
 
                     <input
@@ -730,7 +734,7 @@ const CheckoutClient = () => {
                       value={opt.value}
                       checked={values.paymentMethod === opt.value}
                       onChange={() => setField('paymentMethod', opt.value)}
-                      className='h-4 w-4 accent-primary'
+                      className='h-4 w-4 shrink-0 accent-primary'
                       disabled={checkout.isPending}
                     />
                   </label>
@@ -755,33 +759,33 @@ const CheckoutClient = () => {
                 <h2 className='text-sm font-semibold'>Payment Summary</h2>
 
                 <div className='mt-4 space-y-3 text-sm'>
-                  <div className='flex items-center justify-between'>
-                    <span className='text-muted-foreground'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <span className='min-w-0 text-muted-foreground'>
                       Price ( {summary.totalItems} items)
                     </span>
-                    <span className='font-medium'>
+                    <span className='shrink-0 font-medium'>
                       {moneyIdr(summary.subtotal)}
                     </span>
                   </div>
 
-                  <div className='flex items-center justify-between'>
-                    <span className='text-muted-foreground'>Delivery Fee</span>
-                    <span className='font-medium'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <span className='min-w-0 text-muted-foreground'>Delivery Fee</span>
+                    <span className='shrink-0 font-medium'>
                       {moneyIdr(summary.deliveryFee)}
                     </span>
                   </div>
 
-                  <div className='flex items-center justify-between'>
-                    <span className='text-muted-foreground'>Service Fee</span>
-                    <span className='font-medium'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <span className='min-w-0 text-muted-foreground'>Service Fee</span>
+                    <span className='shrink-0 font-medium'>
                       {moneyIdr(summary.serviceFee)}
                     </span>
                   </div>
 
                   <div className='mt-2 pt-3'>
-                    <div className='flex items-center justify-between'>
-                      <span className='font-semibold'>Total</span>
-                      <span className='text-lg font-semibold'>
+                    <div className='flex items-center justify-between gap-3'>
+                      <span className='min-w-0 font-semibold'>Total</span>
+                      <span className='shrink-0 text-lg font-semibold'>
                         {moneyIdr(summary.totalPrice)}
                       </span>
                     </div>
