@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { ShowMoreButton } from '@/components/common/ShowMoreButton';
+import { Toast } from '@/components/common/Toast';
+import { ToastViewport } from '@/components/common/ToastViewport';
 import { RestaurantList } from '@/components/resto/RestaurantList';
 import { Input } from '@/components/ui/input';
 import { useInfiniteRestaurantsQuery } from '@/services/queries/restaurants';
@@ -43,6 +45,7 @@ const shortcuts = [
 export const HomeClient = () => {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
+  const [isNoMoreToastOpen, setIsNoMoreToastOpen] = useState(false);
 
   const hasQuery = searchValue.trim().length > 0;
 
@@ -59,6 +62,10 @@ export const HomeClient = () => {
 
   const canShowMore = Boolean(restaurantsInfinite.hasNextPage);
   const isLoadingMore = restaurantsInfinite.isFetchingNextPage;
+  const isExhausted =
+    restaurantsInfinite.isSuccess &&
+    restaurantsInfinite.hasNextPage === false &&
+    !isLoadingMore;
 
   const handleSubmitSearch = () => {
     const q = searchValue.trim();
@@ -69,6 +76,17 @@ export const HomeClient = () => {
 
   return (
     <main>
+      <ToastViewport>
+        <Toast
+          open={isNoMoreToastOpen}
+          variant='info'
+          title='Info'
+          description='No more restaurants to show.'
+          autoCloseMs={3000}
+          onClose={() => setIsNoMoreToastOpen(false)}
+        />
+      </ToastViewport>
+
       {/* Hero */}
       <section className='relative'>
         <div className='relative h-110 w-full overflow-hidden sm:h-140'>
@@ -192,6 +210,9 @@ export const HomeClient = () => {
             canShowMore={canShowMore}
             isLoadingMore={isLoadingMore}
             onClickAction={() => restaurantsInfinite.fetchNextPage()}
+            onUnavailableAction={
+              isExhausted ? () => setIsNoMoreToastOpen(true) : undefined
+            }
           />
         </div>
       </section>

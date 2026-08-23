@@ -6,6 +6,8 @@ import { useMemo, useState } from 'react';
 
 import { NotAvailableYet } from '@/components/common/NotAvailableYet';
 import { ShowMoreButton } from '@/components/common/ShowMoreButton';
+import { Toast } from '@/components/common/Toast';
+import { ToastViewport } from '@/components/common/ToastViewport';
 import {
   QTY_ICON_ADD,
   QTY_ICON_MINUS,
@@ -55,6 +57,7 @@ const MenuSection = ({ restaurant, defaultType = 'all' }: Props) => {
   // UI state (qty yang ditampilkan di halaman detail)
   const [qtyById, setQtyById] = useState<Record<number, number>>({});
   const [serverError, setServerError] = useState<string>('');
+  const [isNoMoreToastOpen, setIsNoMoreToastOpen] = useState(false);
 
   const menus = useMemo(() => restaurant.menus ?? [], [restaurant.menus]);
 
@@ -147,6 +150,17 @@ const MenuSection = ({ restaurant, defaultType = 'all' }: Props) => {
 
   return (
     <section className='mt-8'>
+      <ToastViewport>
+        <Toast
+          open={isNoMoreToastOpen}
+          variant='info'
+          title='Info'
+          description='No more menu items to show.'
+          autoCloseMs={3000}
+          onClose={() => setIsNoMoreToastOpen(false)}
+        />
+      </ToastViewport>
+
       {/* Title */}
       <h2 className='text-xl font-semibold tracking-tight md:text-2xl'>Menu</h2>
 
@@ -321,11 +335,10 @@ const MenuSection = ({ restaurant, defaultType = 'all' }: Props) => {
       {/* Show More button (Figma) */}
       <div className='mt-8 flex justify-center'>
         <ShowMoreButton
-          label='Show More'
-          onClickAction={() => {
-            // placeholder: if nanti ada pagination menu
-          }}
-          disabled
+          canShowMore={false}
+          isLoadingMore={false}
+          onClickAction={() => undefined}
+          onUnavailableAction={() => setIsNoMoreToastOpen(true)}
         />
       </div>
     </section>

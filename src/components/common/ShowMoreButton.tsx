@@ -6,6 +6,7 @@ type NewShapeProps = {
   canShowMore: boolean;
   isLoadingMore: boolean;
   onClickAction: () => void;
+  onUnavailableAction?: () => void;
 };
 
 type LegacyShapeProps = {
@@ -23,12 +24,23 @@ const ShowMoreButton = (props: ShowMoreButtonProps) => {
 
   const label = isNewShape ? 'Show More' : props.label;
 
-  const disabled = isNewShape
-    ? !props.canShowMore || props.isLoadingMore
+  const unavailableWithFeedback =
+    isNewShape &&
+    !props.canShowMore &&
+    !props.isLoadingMore &&
+    Boolean(props.onUnavailableAction);
+
+  const nativeDisabled = isNewShape
+    ? props.isLoadingMore || (!props.canShowMore && !unavailableWithFeedback)
     : Boolean(props.disabled);
 
   const handleClick = () => {
-    if (disabled) return;
+    if (unavailableWithFeedback) {
+      props.onUnavailableAction?.();
+      return;
+    }
+
+    if (nativeDisabled) return;
     props.onClickAction();
   };
 
@@ -36,7 +48,8 @@ const ShowMoreButton = (props: ShowMoreButtonProps) => {
     <button
       type='button'
       onClick={handleClick}
-      disabled={disabled}
+      disabled={nativeDisabled}
+      aria-disabled={unavailableWithFeedback || undefined}
       aria-label={label}
       className={[
         //  Figma: tombol kecil, centered, pill
@@ -47,6 +60,7 @@ const ShowMoreButton = (props: ShowMoreButtonProps) => {
         'hover:bg-muted/50',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         'disabled:cursor-not-allowed disabled:opacity-60',
+        'aria-disabled:cursor-not-allowed aria-disabled:opacity-60',
       ].join(' ')}
     >
       {isNewShape && props.isLoadingMore ? 'Loading...' : label}
