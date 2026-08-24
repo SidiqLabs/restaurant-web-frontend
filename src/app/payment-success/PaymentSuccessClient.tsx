@@ -69,9 +69,17 @@ type DetailRowProps = {
   label: string;
   value: React.ReactNode;
   isTotal?: boolean;
+  stackOnMobile?: boolean;
+  valueClassName?: string;
 };
 
-const DetailRow = ({ label, value, isTotal }: DetailRowProps) => {
+const DetailRow = ({
+  label,
+  value,
+  isTotal,
+  stackOnMobile,
+  valueClassName,
+}: DetailRowProps) => {
   if (isTotal) {
     return (
       <div className='flex items-center justify-between px-6 py-5'>
@@ -84,9 +92,26 @@ const DetailRow = ({ label, value, isTotal }: DetailRowProps) => {
   }
 
   return (
-    <div className='flex items-center justify-between px-6 py-5 text-sm'>
-      <div className='text-muted-foreground'>{label}</div>
-      <div className='text-right font-semibold text-foreground'>{value}</div>
+    <div
+      className={[
+        'flex px-6 py-5 text-sm',
+        stackOnMobile
+          ? 'flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4'
+          : 'items-center justify-between gap-4',
+      ].join(' ')}
+    >
+      <div className='shrink-0 text-muted-foreground'>{label}</div>
+      <div
+        className={[
+          'min-w-0 max-w-full font-semibold text-foreground',
+          stackOnMobile ? 'text-left sm:flex-1 sm:text-right' : 'text-right',
+          valueClassName,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        {value}
+      </div>
     </div>
   );
 };
@@ -214,7 +239,12 @@ const PaymentSuccessClient = () => {
             <TicketDivider notchBgClassName={notchBgClassName} />
 
             <div>
-              <DetailRow label='Transaction ID' value={txParam || '-'} />
+              <DetailRow
+                label='Transaction ID'
+                value={txParam || '-'}
+                stackOnMobile
+                valueClassName='break-all'
+              />
               <DetailRow
                 label='Date'
                 value={tx?.createdAt ? formatDateTime(tx.createdAt) : '-'}
@@ -222,6 +252,8 @@ const PaymentSuccessClient = () => {
               <DetailRow
                 label='Payment Method'
                 value={tx?.paymentMethod ?? '-'}
+                stackOnMobile
+                valueClassName='break-words'
               />
             </div>
 
