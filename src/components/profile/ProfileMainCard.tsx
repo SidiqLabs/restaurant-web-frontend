@@ -40,13 +40,13 @@ export const ProfileMainCard = ({ user }: ProfileMainCardProps) => {
       : null;
 
   return (
-    <section className='w-full'>
+    <section className='min-w-0 w-full'>
       <h1 className='mb-4 text-2xl font-semibold text-foreground'>Profile</h1>
 
       <div className={CARD}>
         {!isEditing ? (
           <>
-            <div className='grid grid-cols-[56px_1fr] items-start gap-4'>
+            <div className='grid grid-cols-[56px_minmax(0,1fr)] items-start gap-4'>
               <div className='relative h-14 w-14 overflow-hidden rounded-full bg-muted'>
                 {avatarUrl ? (
                   <Image
