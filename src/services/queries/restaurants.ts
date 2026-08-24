@@ -47,7 +47,13 @@ export const restaurantQueryKeys = {
       params?.limit ?? 20,
     ] as const,
 
-  restaurantDetail: (id: number) => ['restaurant', id] as const,
+  restaurantDetail: (params: GetRestaurantDetailParams) =>
+    [
+      'restaurant',
+      params.id,
+      params.limitMenu ?? null,
+      params.limitReview ?? null,
+    ] as const,
   recommended: () => ['restaurants', 'recommended'] as const,
 
   bestSeller: (params?: GetBestSellerRestaurantsParams) =>
@@ -241,9 +247,22 @@ export const useInfiniteRestaurantsQuery = (
 
 export const useRestaurantDetailQuery = (params: GetRestaurantDetailParams) => {
   return useQuery({
-    queryKey: restaurantQueryKeys.restaurantDetail(params.id),
+    queryKey: restaurantQueryKeys.restaurantDetail(params),
     queryFn: () => fetchRestaurantDetail(params),
     enabled: Number.isFinite(params.id) && params.id > 0,
+    placeholderData: (previousData, previousQuery) => {
+      const previousKey = previousQuery?.queryKey;
+
+      if (
+        Array.isArray(previousKey) &&
+        previousKey[0] === 'restaurant' &&
+        previousKey[1] === params.id
+      ) {
+        return previousData;
+      }
+
+      return undefined;
+    },
   });
 };
 
