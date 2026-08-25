@@ -303,7 +303,7 @@ const Header = ({ className }: HeaderProps) => {
                       aria-label='User menu'
                       className={cn(
                         'inline-flex h-11 items-center gap-3 rounded-full px-3',
-                        headerSolid ? 'hover:bg-accent' : 'hover:bg-white/10',
+                        headerSolid ? 'hover:bg-muted' : 'hover:bg-white/10',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                       )}
                     >
@@ -413,7 +413,7 @@ const Header = ({ className }: HeaderProps) => {
                 onClick={() => setIsMenuOpen((v) => !v)}
                 className={cn(
                   'hidden md:inline-flex h-11 items-center gap-3 rounded-full px-3',
-                  headerSolid ? 'hover:bg-accent' : 'hover:bg-white/10',
+                  headerSolid ? 'hover:bg-muted' : 'hover:bg-white/10',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                 )}
               >
