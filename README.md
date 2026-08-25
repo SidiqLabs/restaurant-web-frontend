@@ -97,7 +97,7 @@ Tailwind CSS: Use Tailwind CSS classes directly within your HTML elements to app
 
 <div class="flex justify-center items-center">...</div>
 
-<h1 class="text-3xl font-bold text-blue-600">...</h1>
+<h1 class="text-3xl font-bold text-primary">...</h1>
 
 Test in the Browser: Run npm run dev to see it on your browser
 
