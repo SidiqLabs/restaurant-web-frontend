@@ -106,7 +106,7 @@ export const ReviewSection = ({
         />
       </ToastViewport>
 
-      <section className='space-y-5'>
+      <section id='reviews' className='scroll-mt-24 space-y-5'>
         {/* Header */}
         <div className='space-y-1.5'>
           <h2 className='text-xl font-semibold tracking-tight md:text-2xl'>

@@ -93,6 +93,9 @@ const OrdersClient = () => {
   const [reviewModal, setReviewModal] = useState<ReviewModalState>({
     open: false,
   });
+  const [completedReviewKeys, setCompletedReviewKeys] = useState<Set<string>>(
+    () => new Set()
+  );
 
   // Track expanded state per row (transaction+restaurant)
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -125,8 +128,9 @@ const OrdersClient = () => {
     const map = new Map<string, MyReviewItem>();
 
     for (const r of list) {
-      const restaurantId = (r as MyReviewItem & { restaurantId?: number })
-        .restaurantId;
+      const restaurantId =
+        (r as MyReviewItem & { restaurantId?: number }).restaurantId ??
+        r.restaurant?.id;
 
       if (typeof r.transactionId !== 'string' || !r.transactionId.trim())
         continue;
@@ -255,6 +259,50 @@ const OrdersClient = () => {
     });
   }, [normalized, search]);
 
+  const currentReviewRowKey = reviewModal.open
+    ? makeReviewKey(reviewModal.transactionId, reviewModal.restaurantId)
+    : '';
+
+  const remainingReviewCount = useMemo(() => {
+    if (!reviewModal.open) return 0;
+
+    return normalized.filter((row) => {
+      return (
+        row.rowKey !== currentReviewRowKey &&
+        row.restaurantId > 0 &&
+        row.menuIds.length > 0 &&
+        !row.existingReview?.id &&
+        !completedReviewKeys.has(row.rowKey)
+      );
+    }).length;
+  }, [completedReviewKeys, currentReviewRowKey, normalized, reviewModal.open]);
+
+  const nextReviewTarget = useMemo(() => {
+    if (!reviewModal.open) return null;
+
+    const currentIndex = normalized.findIndex(
+      (row) => row.rowKey === currentReviewRowKey
+    );
+    const orderedRows =
+      currentIndex >= 0
+        ? [
+            ...normalized.slice(currentIndex + 1),
+            ...normalized.slice(0, currentIndex),
+          ]
+        : normalized;
+
+    return (
+      orderedRows.find(
+        (row) =>
+          row.rowKey !== currentReviewRowKey &&
+          row.restaurantId > 0 &&
+          row.menuIds.length > 0 &&
+          !row.existingReview?.id &&
+          !completedReviewKeys.has(row.rowKey)
+      ) ?? null
+    );
+  }, [completedReviewKeys, currentReviewRowKey, normalized, reviewModal.open]);
+
   const isUnauthorized =
     error instanceof Error &&
     normalizeText(error.message).includes(
@@ -275,7 +323,34 @@ const OrdersClient = () => {
     setReviewModal({ open: true, ...args });
   };
 
+  const openReviewModalFromRow = (row: NormalizedOrderRow) => {
+    openReviewModal({
+      transactionId: row.transactionId,
+      restaurantName: row.restaurantName,
+      restaurantId: row.restaurantId,
+      menuIds: row.menuIds,
+      existingReview: row.existingReview,
+    });
+  };
+
   const closeReviewModal = () => setReviewModal({ open: false });
+
+  const handleReviewSubmitted = () => {
+    if (!currentReviewRowKey) return;
+
+    setCompletedReviewKeys((prev) => {
+      if (prev.has(currentReviewRowKey)) return prev;
+
+      const next = new Set(prev);
+      next.add(currentReviewRowKey);
+      return next;
+    });
+  };
+
+  const handleReviewNext = () => {
+    if (!nextReviewTarget) return;
+    openReviewModalFromRow(nextReviewTarget);
+  };
 
   return (
     <main className='mx-auto w-full max-w-[1200px] px-4 pb-16 pt-10 sm:px-6 lg:px-8'>
@@ -485,15 +560,7 @@ const OrdersClient = () => {
 
                         <button
                           type='button'
-                          onClick={() =>
-                            openReviewModal({
-                              transactionId: o.transactionId,
-                              restaurantName: o.restaurantName,
-                              restaurantId: o.restaurantId,
-                              menuIds: o.menuIds,
-                              existingReview: o.existingReview,
-                            })
-                          }
+                          onClick={() => openReviewModalFromRow(o)}
                           className={cn(
                             'h-11 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground',
                             'hover:opacity-90 active:opacity-95',
@@ -527,6 +594,9 @@ const OrdersClient = () => {
           restaurantName={reviewModal.restaurantName}
           menuIds={reviewModal.menuIds}
           existingReview={reviewModal.existingReview}
+          remainingReviewCount={remainingReviewCount}
+          onReviewSubmitted={handleReviewSubmitted}
+          onReviewNext={nextReviewTarget ? handleReviewNext : undefined}
         />
       ) : null}
     </main>

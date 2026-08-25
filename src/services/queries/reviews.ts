@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/services/api/axios';
+import { restaurantQueryKeys } from '@/services/queries/restaurants';
 import type {
   CreateReviewRequest,
   CreateReviewResponse,
@@ -117,9 +118,14 @@ export const useCreateReviewMutation = () => {
 
   return useMutation({
     mutationFn: (payload: CreateReviewRequest) => createReviewApi(payload),
-    onSuccess: () => {
+    onSuccess: (_res, payload) => {
       // refresh anything review-related
       qc.invalidateQueries({ queryKey: reviewQueryKeys.root });
+      qc.invalidateQueries({
+        queryKey: restaurantQueryKeys.restaurantDetail({
+          id: payload.restaurantId,
+        }),
+      });
     },
   });
 };
@@ -130,8 +136,15 @@ export const useUpdateReviewMutation = () => {
   return useMutation({
     mutationFn: (vars: { id: number; payload: UpdateReviewRequest }) =>
       updateReviewApi(vars.id, vars.payload),
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: reviewQueryKeys.root });
+
+      const restaurantId = res.data.review.restaurant?.id;
+      if (typeof restaurantId === 'number' && Number.isFinite(restaurantId)) {
+        qc.invalidateQueries({
+          queryKey: restaurantQueryKeys.restaurantDetail({ id: restaurantId }),
+        });
+      }
     },
   });
 };

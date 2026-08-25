@@ -2,6 +2,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import ReviewStarIcon from '@/components/icons/ReviewStarIcon';
@@ -35,6 +36,17 @@ type ReviewModalProps = {
 
   // if exists => edit mode
   existingReview?: MyReviewItem | null;
+  remainingReviewCount?: number;
+  onReviewSubmitted?: () => void;
+  onReviewNext?: () => void;
+};
+
+type SubmittedReview = {
+  id?: number;
+  restaurantId: number;
+  restaurantName: string;
+  star: number;
+  comment: string;
 };
 
 const clampStar = (v: number) => Math.max(0, Math.min(5, v));
@@ -60,6 +72,32 @@ const lockBodyScroll = () => {
   };
 };
 
+const ReviewStars = ({ value }: { value: number }) => {
+  const safeValue = clampStar(value);
+
+  return (
+    <div
+      className='flex items-center justify-center gap-1.5'
+      aria-label={`Rating ${safeValue} out of 5`}
+    >
+      {Array.from({ length: 5 }).map((_, i) => {
+        const active = i < safeValue;
+
+        return (
+          <ReviewStarIcon
+            key={i}
+            aria-hidden='true'
+            className={cn(
+              MODAL_STAR_SIZE_CLASS,
+              active ? 'text-star' : 'text-muted-foreground'
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 const ReviewModal = ({
   open,
   onClose,
@@ -68,7 +106,11 @@ const ReviewModal = ({
   restaurantName,
   menuIds,
   existingReview,
+  remainingReviewCount = 0,
+  onReviewSubmitted,
+  onReviewNext,
 }: ReviewModalProps) => {
+  const router = useRouter();
   const isEditMode = Boolean(existingReview?.id);
 
   // IMPORTANT:
@@ -80,6 +122,8 @@ const ReviewModal = ({
   const [hoverStar, setHoverStar] = useState<number>(0);
   const [comment, setComment] = useState<string>(existingReview?.comment ?? '');
   const [localError, setLocalError] = useState<string>('');
+  const [submittedReview, setSubmittedReview] =
+    useState<SubmittedReview | null>(null);
 
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -92,6 +136,7 @@ const ReviewModal = ({
     createReview.isPending || updateReview.isPending || deleteReview.isPending;
 
   const previewStar = clampStar(hoverStar || selectedStar);
+  const hasRemainingReviews = remainingReviewCount > 0 && Boolean(onReviewNext);
 
   const canSubmit = useMemo(() => {
     const hasStar = selectedStar >= 1 && selectedStar <= 5;
@@ -160,11 +205,18 @@ const ReviewModal = ({
 
   const setHover = (value: number) => setHoverStar(clampStar(value));
 
+  const handleViewReview = () => {
+    if (!submittedReview) return;
+
+    router.push(`/resto/${submittedReview.restaurantId}#reviews`);
+    onClose();
+  };
+
   const handleSubmit = async () => {
     setLocalError('');
 
     if (selectedStar < 1 || selectedStar > 5) {
-      setLocalError('Please select a rating (15).');
+      setLocalError('Please select a rating (1-5).');
       return;
     }
 
@@ -189,7 +241,7 @@ const ReviewModal = ({
         return;
       }
 
-      await createReview.mutateAsync({
+      const res = await createReview.mutateAsync({
         transactionId,
         restaurantId,
         star: selectedStar,
@@ -197,7 +249,16 @@ const ReviewModal = ({
         menuIds,
       });
 
-      onClose();
+      const review = res.data.review;
+      setSubmittedReview({
+        id: review.id,
+        restaurantId,
+        restaurantName:
+          review.restaurant?.name ?? restaurantName ?? 'Restaurant',
+        star: review.star ?? selectedStar,
+        comment: review.comment ?? trimmed,
+      });
+      onReviewSubmitted?.();
     } catch (err) {
       setLocalError(getApiErrorMessage(err));
     }
@@ -230,14 +291,14 @@ const ReviewModal = ({
       )}
       role='dialog'
       aria-modal='true'
-      aria-label='Write a Review'
+      aria-label={submittedReview ? 'Review Submitted' : 'Write a Review'}
       onMouseDown={handleOverlayMouseDown}
     >
       <div
         ref={dialogRef}
         className={cn(
           'w-full max-w-md rounded-2xl border bg-card p-6 shadow-sm',
-          'outline-none'
+          'max-h-[calc(100vh-32px)] overflow-y-auto outline-none'
         )}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -245,9 +306,13 @@ const ReviewModal = ({
         <div className='flex items-start justify-between gap-4'>
           <div className='min-w-0'>
             <div className='text-lg font-semibold text-foreground'>
-              {isEditMode ? 'Edit Review' : 'Give Review'}
+              {submittedReview
+                ? 'Review Submitted'
+                : isEditMode
+                  ? 'Edit Review'
+                  : 'Give Review'}
             </div>
-            {restaurantName ? (
+            {restaurantName && !submittedReview ? (
               <p className='mt-1 truncate text-sm text-muted-foreground'>
                 {restaurantName}
               </p>
@@ -277,118 +342,199 @@ const ReviewModal = ({
           </button>
         </div>
 
-        {/* Rating */}
-        <div className='mt-5 text-center'>
-          <div className='text-sm font-semibold text-foreground'>
-            Give Rating
-          </div>
+        {submittedReview ? (
+          <div className='mt-5 space-y-5'>
+            <div className='rounded-2xl border bg-background p-4 text-center'>
+              <div className='mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground'>
+                ✓
+              </div>
+              <p className='mt-3 text-sm font-medium text-muted-foreground'>
+                Your review has been submitted.
+              </p>
+            </div>
 
-          <div className='mt-3 flex items-center justify-center gap-3'>
-            {Array.from({ length: 5 }).map((_, i) => {
-              const starValue = i + 1;
-              const active = starValue <= previewStar;
+            <div className='rounded-2xl border bg-background p-4'>
+              <p className='break-words text-center text-base font-semibold text-foreground'>
+                {submittedReview.restaurantName}
+              </p>
 
-              return (
+              <div className='mt-3'>
+                <ReviewStars value={submittedReview.star} />
+              </div>
+
+              <p className='mt-4 break-words rounded-xl bg-card p-3 text-sm leading-relaxed text-foreground'>
+                "{submittedReview.comment}"
+              </p>
+            </div>
+
+            <p className='text-center text-sm text-muted-foreground'>
+              {hasRemainingReviews
+                ? `${remainingReviewCount} restaurant${
+                    remainingReviewCount === 1 ? '' : 's'
+                  } remaining`
+                : 'All available reviews completed'}
+            </p>
+
+            <div className='flex flex-col gap-3'>
+              {hasRemainingReviews ? (
                 <button
-                  key={starValue}
                   type='button'
-                  disabled={isSubmitting}
-                  onClick={() => setSelectedStar(starValue)}
-                  onMouseEnter={() => setHover(starValue)}
-                  onMouseLeave={() => setHover(0)}
+                  onClick={onReviewNext}
                   className={cn(
-                    'grid h-10 w-10 place-items-center rounded-full',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                    isSubmitting ? 'opacity-70' : 'hover:bg-muted'
+                    'h-12 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground',
+                    'hover:opacity-90 active:opacity-95',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                   )}
-                  aria-label={`${starValue} star`}
-                  aria-pressed={selectedStar === starValue}
                 >
-                  <ReviewStarIcon
-                    aria-hidden='true'
-                    className={cn(
-                      MODAL_STAR_SIZE_CLASS,
-                      active ? 'text-star' : 'text-muted-foreground'
-                    )}
-                  />
+                  Review Next
                 </button>
-              );
-            })}
+              ) : null}
+
+              <button
+                type='button'
+                onClick={handleViewReview}
+                className={cn(
+                  'h-12 w-full rounded-full text-sm font-semibold',
+                  hasRemainingReviews
+                    ? 'border bg-background text-foreground hover:bg-muted'
+                    : 'bg-primary text-primary-foreground hover:opacity-90 active:opacity-95',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                )}
+              >
+                View Review
+              </button>
+
+              {!hasRemainingReviews ? (
+                <button
+                  type='button'
+                  onClick={safeClose}
+                  className={cn(
+                    'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
+                    'hover:bg-muted',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                  )}
+                >
+                  Back to My Orders
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Rating */}
+            <div className='mt-5 text-center'>
+              <div className='text-sm font-semibold text-foreground'>
+                Give Rating
+              </div>
 
-        {/* Comment */}
-        <div className='mt-5'>
-          <label className='sr-only' htmlFor='review-comment'>
-            Review comment
-          </label>
-          <textarea
-            id='review-comment'
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder='Please share your thoughts about our service!'
-            disabled={isSubmitting}
-            className={cn(
-              'min-h-35 w-full resize-none rounded-2xl border bg-background p-4 text-sm text-foreground',
-              'placeholder:text-muted-foreground',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
-            )}
-          />
-        </div>
+              <div className='mt-3 flex items-center justify-center gap-3'>
+                {Array.from({ length: 5 }).map((_, i) => {
+                  const starValue = i + 1;
+                  const active = starValue <= previewStar;
 
-        {/* Error */}
-        {localError ? (
-          <p className='mt-3 text-sm text-destructive' aria-live='polite'>
-            {localError}
-          </p>
-        ) : null}
+                  return (
+                    <button
+                      key={starValue}
+                      type='button'
+                      disabled={isSubmitting}
+                      onClick={() => setSelectedStar(starValue)}
+                      onMouseEnter={() => setHover(starValue)}
+                      onMouseLeave={() => setHover(0)}
+                      className={cn(
+                        'grid h-10 w-10 place-items-center rounded-full',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        isSubmitting ? 'opacity-70' : 'hover:bg-muted'
+                      )}
+                      aria-label={`${starValue} star`}
+                      aria-pressed={selectedStar === starValue}
+                    >
+                      <ReviewStarIcon
+                        aria-hidden='true'
+                        className={cn(
+                          MODAL_STAR_SIZE_CLASS,
+                          active ? 'text-star' : 'text-muted-foreground'
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* Footer */}
-        <div className='mt-5 flex flex-col gap-3'>
-          <button
-            type='button'
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className={cn(
-              'h-12 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground',
-              'hover:opacity-90 active:opacity-95',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              !canSubmit ? 'opacity-60' : ''
-            )}
-          >
-            {isSubmitting ? 'Sending...' : isEditMode ? 'Update' : 'Send'}
-          </button>
+            {/* Comment */}
+            <div className='mt-5'>
+              <label className='sr-only' htmlFor='review-comment'>
+                Review comment
+              </label>
+              <textarea
+                id='review-comment'
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder='Please share your thoughts about our service!'
+                disabled={isSubmitting}
+                className={cn(
+                  'min-h-35 w-full resize-none rounded-2xl border bg-background p-4 text-sm text-foreground',
+                  'placeholder:text-muted-foreground',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                )}
+              />
+            </div>
 
-          {isEditMode ? (
-            <button
-              type='button'
-              onClick={handleDelete}
-              disabled={isSubmitting}
-              className={cn(
-                'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
-                'hover:bg-muted',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                isSubmitting ? 'opacity-60' : ''
-              )}
-            >
-              Delete Review
-            </button>
-          ) : null}
+            {/* Error */}
+            {localError ? (
+              <p className='mt-3 text-sm text-destructive' aria-live='polite'>
+                {localError}
+              </p>
+            ) : null}
 
-          <button
-            type='button'
-            onClick={safeClose}
-            disabled={isSubmitting}
-            className={cn(
-              'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
-              'hover:bg-muted',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              isSubmitting ? 'opacity-60' : ''
-            )}
-          >
-            Cancel
-          </button>
-        </div>
+            {/* Footer */}
+            <div className='mt-5 flex flex-col gap-3'>
+              <button
+                type='button'
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className={cn(
+                  'h-12 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground',
+                  'hover:opacity-90 active:opacity-95',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  !canSubmit ? 'opacity-60' : ''
+                )}
+              >
+                {isSubmitting ? 'Sending...' : isEditMode ? 'Update' : 'Send'}
+              </button>
+
+              {isEditMode ? (
+                <button
+                  type='button'
+                  onClick={handleDelete}
+                  disabled={isSubmitting}
+                  className={cn(
+                    'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
+                    'hover:bg-muted',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    isSubmitting ? 'opacity-60' : ''
+                  )}
+                >
+                  Delete Review
+                </button>
+              ) : null}
+
+              <button
+                type='button'
+                onClick={safeClose}
+                disabled={isSubmitting}
+                className={cn(
+                  'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
+                  'hover:bg-muted',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  isSubmitting ? 'opacity-60' : ''
+                )}
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
