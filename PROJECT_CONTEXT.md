@@ -147,6 +147,15 @@ Status: ✅ COMPLETED (MVP + UI Polish + Review Feature)
 
 ---
 
+## Design System Interaction Semantics
+
+- Semantic UI tokens are mandatory; avoid arbitrary component-specific colors.
+- Primary actions use the primary brand token and must keep primary hover, focus, and disabled semantics.
+- Secondary, edit, cancel, and dismiss actions are neutral and visually subordinate to primary actions.
+- Destructive styling is reserved for genuinely destructive actions such as delete or permanent removal.
+- Hover, focus, and disabled states must preserve the control's semantic role and readable contrast.
+- Prefer shared semantic component variants over repeated ad-hoc class overrides. Shared component changes require impact audit across existing usages.
+
 ## Locked Paths (Respected)
 
 - src/lib/store.ts

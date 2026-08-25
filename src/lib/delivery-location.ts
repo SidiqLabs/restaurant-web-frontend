@@ -18,11 +18,17 @@ export const readDeliveryLocationDraft = (): DeliveryLocationDraft | null => {
     if (!isObject(parsed)) return null;
 
     const formattedAddress = parsed.formattedAddress;
+    const addressDetail = parsed.addressDetail;
     const latitude = parsed.latitude;
     const longitude = parsed.longitude;
     const updatedAt = parsed.updatedAt;
 
     if (typeof formattedAddress !== 'string' || formattedAddress.trim() === '')
+      return null;
+    if (
+      addressDetail !== undefined &&
+      typeof addressDetail !== 'string'
+    )
       return null;
     if (typeof latitude !== 'number' || !Number.isFinite(latitude)) return null;
     if (typeof longitude !== 'number' || !Number.isFinite(longitude))
@@ -31,6 +37,10 @@ export const readDeliveryLocationDraft = (): DeliveryLocationDraft | null => {
 
     return {
       formattedAddress,
+      addressDetail:
+        typeof addressDetail === 'string' && addressDetail.trim()
+          ? addressDetail.trim()
+          : undefined,
       latitude,
       longitude,
       updatedAt,
@@ -38,4 +48,13 @@ export const readDeliveryLocationDraft = (): DeliveryLocationDraft | null => {
   } catch {
     return null;
   }
+};
+
+export const formatDeliveryAddress = (
+  draft: DeliveryLocationDraft
+): string => {
+  const base = draft.formattedAddress.trim();
+  const detail = draft.addressDetail?.trim();
+
+  return detail ? `${base}, ${detail}` : base;
 };

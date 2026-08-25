@@ -1,12 +1,17 @@
 // src/components/profile/ProfileLayout.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { LocationModal } from '@/components/profile/LocationModal';
 import { ProfileMainCard } from '@/components/profile/ProfileMainCard';
 import { ProfileSidebar } from '@/components/profile/ProfileSidebar';
+import {
+  DELIVERY_LOCATION_EVENT,
+  readDeliveryLocationDraft,
+} from '@/lib/delivery-location';
 import type { AuthUser } from '@/types/auth';
+import type { DeliveryLocationDraft } from '@/types/location';
 
 type ProfileLayoutProps = {
   user: AuthUser;
@@ -14,6 +19,28 @@ type ProfileLayoutProps = {
 
 export const ProfileLayout = ({ user }: ProfileLayoutProps) => {
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [deliveryLocation, setDeliveryLocation] =
+    useState<DeliveryLocationDraft | null>(null);
+
+  useEffect(() => {
+    const syncDeliveryLocation = () => {
+      setDeliveryLocation(readDeliveryLocationDraft());
+    };
+
+    syncDeliveryLocation();
+
+    window.addEventListener(
+      DELIVERY_LOCATION_EVENT,
+      syncDeliveryLocation
+    );
+
+    return () => {
+      window.removeEventListener(
+        DELIVERY_LOCATION_EVENT,
+        syncDeliveryLocation
+      );
+    };
+  }, []);
 
   return (
     <div className='w-full bg-background'>
@@ -27,7 +54,13 @@ export const ProfileLayout = ({ user }: ProfileLayoutProps) => {
               />
             </div>
 
-            <ProfileMainCard user={user} />
+            <ProfileMainCard
+              user={user}
+              deliveryLocation={deliveryLocation}
+              onOpenDeliveryAddressAction={() =>
+                setIsDeliveryModalOpen(true)
+              }
+            />
 
             <div className='hidden lg:block' aria-hidden='true' />
           </div>

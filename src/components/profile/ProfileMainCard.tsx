@@ -9,9 +9,12 @@ import { ProfileInfoRow } from '@/components/profile/ProfileInfoRow';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { AuthUser } from '@/types/auth';
+import type { DeliveryLocationDraft } from '@/types/location';
 
 type ProfileMainCardProps = {
   user: AuthUser;
+  deliveryLocation: DeliveryLocationDraft | null;
+  onOpenDeliveryAddressAction: () => void;
 };
 
 const isLikelyAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
@@ -26,7 +29,11 @@ const getInitial = (name: string) => {
 // Also keep styling consistent with other cards (ProfileSidebar already uses bg-card + border)
 const CARD = 'w-full rounded-2xl border border-border bg-card p-6 shadow-sm';
 
-export const ProfileMainCard = ({ user }: ProfileMainCardProps) => {
+export const ProfileMainCard = ({
+  user,
+  deliveryLocation,
+  onOpenDeliveryAddressAction,
+}: ProfileMainCardProps) => {
   const [isEditing, setIsEditing] = React.useState(false);
 
   const displayName = user.name?.trim() ? user.name : 'User';
@@ -69,6 +76,45 @@ export const ProfileMainCard = ({ user }: ProfileMainCardProps) => {
                 <ProfileInfoRow label='Email' value={user.email} />
                 <div className='h-px w-full bg-muted' />
                 <ProfileInfoRow label='Nomor Handphone' value={user.phone} />
+              </div>
+            </div>
+
+            <div className='mt-6 border-t border-border pt-5'>
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+                <div className='min-w-0'>
+                  <p className='text-sm font-medium text-muted-foreground'>
+                    Delivery Address
+                  </p>
+
+                  {deliveryLocation ? (
+                    <div className='mt-2 space-y-2 text-sm'>
+                      <p className='break-words text-foreground'>
+                        {deliveryLocation.formattedAddress}
+                      </p>
+
+                      {deliveryLocation.addressDetail ? (
+                        <p className='break-words text-foreground'>
+                          {deliveryLocation.addressDetail}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className='mt-2 text-sm text-muted-foreground'>
+                      No delivery address saved yet.
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  type='button'
+                  variant='neutral'
+                  className='h-10 shrink-0 rounded-full px-4 text-sm font-medium'
+                  onClick={onOpenDeliveryAddressAction}
+                >
+                  {deliveryLocation
+                    ? 'Change Delivery Address'
+                    : 'Add Delivery Address'}
+                </Button>
               </div>
             </div>
 

@@ -286,7 +286,7 @@ export function ProfileForm({ user, onCancelAction, onSuccessAction }: Props) {
 
         <Button
           type='button'
-          variant='outline'
+          variant='neutral'
           className='h-12 w-full rounded-full text-sm font-semibold'
           disabled={isPending}
           onClick={onCancelAction}

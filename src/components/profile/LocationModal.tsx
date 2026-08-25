@@ -6,7 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DELIVERY_LOCATION_EVENT,
+  DELIVERY_LOCATION_KEY,
+} from '@/lib/delivery-location';
 import { geocodeAddress } from '@/services/geocoding/google';
+import type { DeliveryLocationDraft } from '@/types/location';
 
 const ICONS = {
   close: '/assets/icons/x-close.svg',
@@ -14,9 +19,6 @@ const ICONS = {
 } as const;
 
 const CLOSE_ICON_SIZE = 24;
-
-const DELIVERY_LOCATION_KEY = 'foody_delivery_location_v1';
-const DELIVERY_LOCATION_EVENT = 'foody-delivery-location';
 
 type LocationModalProps = {
   open: boolean;
@@ -27,13 +29,6 @@ type GeocodeResult = {
   latitude: number;
   longitude: number;
   formattedAddress: string;
-};
-
-type DeliveryLocationDraft = {
-  formattedAddress: string;
-  latitude: number;
-  longitude: number;
-  updatedAt: string;
 };
 
 const getFocusable = (root: HTMLElement | null): HTMLElement[] => {
@@ -62,6 +57,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const [address, setAddress] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
   const [geo, setGeo] = useState<GeocodeResult | null>(null);
   const [localError, setLocalError] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -126,6 +122,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
   useEffect(() => {
     if (!open) return;
     setAddress('');
+    setAddressDetail('');
     setGeo(null);
     setLocalError('');
     setIsGeocoding(false);
@@ -135,6 +132,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
   const handleDetect = async () => {
     setLocalError('');
     setGeo(null);
+    setAddressDetail('');
 
     const trimmed = address.trim();
     if (trimmed.length < 6) {
@@ -165,6 +163,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
 
     const draft: DeliveryLocationDraft = {
       formattedAddress: geo.formattedAddress,
+      addressDetail: addressDetail.trim() || undefined,
       latitude: geo.latitude,
       longitude: geo.longitude,
       updatedAt: new Date().toISOString(),
@@ -246,7 +245,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
           />
 
           <Button
-            variant='outline'
+            variant='neutral'
             className='h-12 w-full rounded-full'
             onClick={handleDetect}
             disabled={!canDetect}
@@ -255,11 +254,40 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
           </Button>
 
           {geo && (
-            <div className='rounded-2xl border bg-muted/30 p-4 text-sm'>
-              <p className='font-semibold'>Location found</p>
-              <p className='mt-1 text-muted-foreground'>
-                {geo.formattedAddress}
-              </p>
+            <div className='space-y-3'>
+              <div className='rounded-2xl border bg-muted/30 p-4 text-sm'>
+                <p className='font-semibold'>Location found</p>
+                <p className='mt-1 text-muted-foreground'>
+                  {geo.formattedAddress}
+                </p>
+              </div>
+
+              <div className='space-y-2'>
+                <label
+                  htmlFor='delivery-address-detail'
+                  className='text-sm font-medium'
+                >
+                  Address Detail
+                  <span className='ml-1 font-normal text-muted-foreground'>
+                    (Optional)
+                  </span>
+                </label>
+
+                <textarea
+                  id='delivery-address-detail'
+                  value={addressDetail}
+                  onChange={(e) => setAddressDetail(e.target.value)}
+                  placeholder='House no., block, RT/RW, floor, landmark, etc.'
+                  maxLength={250}
+                  rows={3}
+                  disabled={isBusy}
+                  className='w-full resize-none rounded-xl border border-input bg-background p-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60'
+                />
+
+                <p className='text-xs text-muted-foreground'>
+                  Add details that help the courier find the exact location.
+                </p>
+              </div>
             </div>
           )}
 
@@ -278,7 +306,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
           </Button>
 
           <Button
-            variant='outline'
+            variant='neutral'
             className='h-12 w-full rounded-full'
             onClick={safeClose}
           >

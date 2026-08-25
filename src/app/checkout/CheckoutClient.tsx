@@ -14,6 +14,11 @@ import {
   QTY_ICON_MINUS,
   QTY_ICON_SIZE,
 } from '@/components/icons/qty';
+import {
+  DELIVERY_LOCATION_EVENT,
+  formatDeliveryAddress,
+  readDeliveryLocationDraft,
+} from '@/lib/delivery-location';
 import { cn } from '@/lib/utils';
 import {
   mapCartToCheckoutPayload,
@@ -29,6 +34,7 @@ import {
   ordersQueryHelpers,
   useCheckoutMutation,
 } from '@/services/queries/orders';
+import type { DeliveryLocationDraft } from '@/types/location';
 
 const paymentOptions = [
   {
@@ -77,13 +83,6 @@ type ToastState =
       message?: string;
     };
 
-type DeliveryLocationDraft = {
-  formattedAddress: string;
-  latitude: number;
-  longitude: number;
-  updatedAt: string; // ISO
-};
-
 const moneyIdr = (value: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(
     value
@@ -94,19 +93,6 @@ const PAGE_CONTAINER = 'mx-auto w-full max-w-[1000px]';
 
 // Toast icon (danger)
 const TOAST_ICON_DANGER = '/assets/icons/danger.svg';
-
-// D3.c: delivery location draft (client-side only)
-const DELIVERY_LOCATION_KEY = 'foody_delivery_location_v1';
-const DELIVERY_LOCATION_EVENT = 'foody-delivery-location';
-
-const safeParseJson = <T,>(raw: string | null): T | null => {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-};
 
 const CheckoutClient = () => {
   const router = useRouter();
@@ -274,13 +260,8 @@ const CheckoutClient = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const readDraft = () => {
-      const raw = window.localStorage.getItem(DELIVERY_LOCATION_KEY);
-      return safeParseJson<DeliveryLocationDraft>(raw);
-    };
-
     const syncDraft = () => {
-      const draft = readDraft();
+      const draft = readDeliveryLocationDraft();
       setDeliveryDraft(draft);
 
       // Only prefill if user hasn't typed a valid address yet
@@ -290,7 +271,7 @@ const CheckoutClient = () => {
 
         return {
           ...prev,
-          deliveryAddress: draft.formattedAddress,
+          deliveryAddress: formatDeliveryAddress(draft),
         };
       });
     };
