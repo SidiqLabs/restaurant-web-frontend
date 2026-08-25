@@ -98,6 +98,24 @@ const ReviewStars = ({ value }: { value: number }) => {
   );
 };
 
+const ReviewResultCard = ({ review }: { review: SubmittedReview }) => {
+  return (
+    <div className='rounded-2xl border bg-background p-4'>
+      <p className='break-words text-center text-base font-semibold text-foreground'>
+        {review.restaurantName}
+      </p>
+
+      <div className='mt-3'>
+        <ReviewStars value={review.star} />
+      </div>
+
+      <p className='mt-4 break-words rounded-xl bg-card p-3 text-sm leading-relaxed text-foreground'>
+        "{review.comment}"
+      </p>
+    </div>
+  );
+};
+
 const ReviewModal = ({
   open,
   onClose,
@@ -137,6 +155,21 @@ const ReviewModal = ({
 
   const previewStar = clampStar(hoverStar || selectedStar);
   const hasRemainingReviews = remainingReviewCount > 0 && Boolean(onReviewNext);
+
+  const existingReviewResult = useMemo<SubmittedReview | null>(() => {
+    if (!existingReview?.id) return null;
+
+    return {
+      id: existingReview.id,
+      restaurantId: existingReview.restaurant?.id ?? restaurantId,
+      restaurantName:
+        existingReview.restaurant?.name ?? restaurantName ?? 'Restaurant',
+      star: existingReview.star,
+      comment: existingReview.comment,
+    };
+  }, [existingReview, restaurantId, restaurantName]);
+
+  const reviewResult = submittedReview ?? existingReviewResult;
 
   const canSubmit = useMemo(() => {
     const hasStar = selectedStar >= 1 && selectedStar <= 5;
@@ -206,9 +239,9 @@ const ReviewModal = ({
   const setHover = (value: number) => setHoverStar(clampStar(value));
 
   const handleViewReview = () => {
-    if (!submittedReview) return;
+    if (!reviewResult) return;
 
-    router.push(`/resto/${submittedReview.restaurantId}#reviews`);
+    router.push(`/resto/${reviewResult.restaurantId}#reviews`);
     onClose();
   };
 
@@ -291,13 +324,19 @@ const ReviewModal = ({
       )}
       role='dialog'
       aria-modal='true'
-      aria-label={submittedReview ? 'Review Submitted' : 'Write a Review'}
+      aria-label={
+        submittedReview
+          ? 'Review Submitted'
+          : isEditMode
+            ? 'Existing Review'
+            : 'Write a Review'
+      }
       onMouseDown={handleOverlayMouseDown}
     >
       <div
         ref={dialogRef}
         className={cn(
-          'w-full max-w-md rounded-2xl border bg-card p-6 shadow-sm',
+          'w-full max-w-md rounded-2xl border bg-card p-5 shadow-sm sm:p-6',
           'max-h-[calc(100vh-32px)] overflow-y-auto outline-none'
         )}
         onMouseDown={(e) => e.stopPropagation()}
@@ -309,7 +348,7 @@ const ReviewModal = ({
               {submittedReview
                 ? 'Review Submitted'
                 : isEditMode
-                  ? 'Edit Review'
+                  ? 'Existing Review'
                   : 'Give Review'}
             </div>
             {restaurantName && !submittedReview ? (
@@ -353,19 +392,7 @@ const ReviewModal = ({
               </p>
             </div>
 
-            <div className='rounded-2xl border bg-background p-4'>
-              <p className='break-words text-center text-base font-semibold text-foreground'>
-                {submittedReview.restaurantName}
-              </p>
-
-              <div className='mt-3'>
-                <ReviewStars value={submittedReview.star} />
-              </div>
-
-              <p className='mt-4 break-words rounded-xl bg-card p-3 text-sm leading-relaxed text-foreground'>
-                "{submittedReview.comment}"
-              </p>
-            </div>
+            <ReviewResultCard review={submittedReview} />
 
             <p className='text-center text-sm text-muted-foreground'>
               {hasRemainingReviews
@@ -421,13 +448,28 @@ const ReviewModal = ({
           </div>
         ) : (
           <>
+            {existingReviewResult ? (
+              <div className='mt-5 space-y-3'>
+                <ReviewResultCard review={existingReviewResult} />
+
+                <div className='rounded-2xl border bg-background p-4 text-center text-sm'>
+                  <p className='font-medium text-foreground'>
+                    You have already reviewed this order.
+                  </p>
+                  <p className='mt-1 text-muted-foreground'>
+                    You can update your existing review instead.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             {/* Rating */}
             <div className='mt-5 text-center'>
               <div className='text-sm font-semibold text-foreground'>
-                Give Rating
+                {isEditMode ? 'Update Rating' : 'Give Rating'}
               </div>
 
-              <div className='mt-3 flex items-center justify-center gap-3'>
+              <div className='mt-3 flex items-center justify-center gap-2 sm:gap-3'>
                 {Array.from({ length: 5 }).map((_, i) => {
                   const starValue = i + 1;
                   const active = starValue <= previewStar;
@@ -500,8 +542,28 @@ const ReviewModal = ({
                   !canSubmit ? 'opacity-60' : ''
                 )}
               >
-                {isSubmitting ? 'Sending...' : isEditMode ? 'Update' : 'Send'}
+                {isSubmitting
+                  ? 'Sending...'
+                  : isEditMode
+                    ? 'Update Review'
+                    : 'Send'}
               </button>
+
+              {isEditMode && reviewResult ? (
+                <button
+                  type='button'
+                  onClick={handleViewReview}
+                  disabled={isSubmitting}
+                  className={cn(
+                    'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
+                    'hover:bg-muted',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    isSubmitting ? 'opacity-60' : ''
+                  )}
+                >
+                  View Review
+                </button>
+              ) : null}
 
               {isEditMode ? (
                 <button
