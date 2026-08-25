@@ -2,6 +2,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 
@@ -119,9 +120,18 @@ const OrdersSidebar = ({
   return (
     <aside className='w-full max-w-[260px]'>
       <div className='rounded-2xl border border-border bg-card p-4 shadow-sm'>
-        {/* Avatar */}
-        <div className='flex items-center gap-3'>
-          <div className='relative h-10 w-10 overflow-hidden rounded-full bg-muted'>
+        {/* Profile navigation */}
+        <Link
+          href='/profile'
+          className={cn(
+            'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-foreground transition-colors',
+            'hover:bg-muted',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            'cursor-pointer'
+          )}
+          aria-label='Open profile'
+        >
+          <div className='relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted'>
             {safeAvatar ? (
               <Image
                 src={safeAvatar}
@@ -137,10 +147,10 @@ const OrdersSidebar = ({
             )}
           </div>
 
-          <div className='min-w-0'>
+          <div className='min-w-0 flex-1'>
             <div className='truncate text-sm font-semibold'>{userName}</div>
           </div>
-        </div>
+        </Link>
 
         {/* Menu (shared) */}
         <AccountSidebarNav items={items} />
