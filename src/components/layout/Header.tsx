@@ -207,7 +207,7 @@ const Header = ({ className }: HeaderProps) => {
 
   const cartBtnClass = cn(
     'relative inline-flex h-11 w-11 items-center justify-center rounded-full',
-    headerSolid ? 'hover:bg-accent' : 'hover:bg-white/10',
+    headerSolid ? 'hover:bg-muted' : 'hover:bg-white/10',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
   );
 
