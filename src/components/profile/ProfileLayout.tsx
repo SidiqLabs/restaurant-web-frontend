@@ -44,10 +44,10 @@ export const ProfileLayout = ({ user }: ProfileLayoutProps) => {
 
   return (
     <div className='w-full bg-background'>
-      <div className='mx-auto w-full max-w-360 px-6 md:px-10 lg:px-16 xl:px-30'>
+      <div className='mx-auto w-full max-w-360 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-30'>
         <div className='pt-8 lg:pt-12'>
-          <div className='grid gap-6 lg:gap-8 lg:grid-cols-[240px_524px_1fr] lg:items-start'>
-            <div className='hidden lg:block'>
+          <div className='grid min-w-0 gap-6 xl:gap-8 xl:grid-cols-[240px_minmax(0,524px)_minmax(0,1fr)] xl:items-start'>
+            <div className='hidden xl:block'>
               <ProfileSidebar
                 user={user}
                 onOpenDeliveryAddressAction={() => setIsDeliveryModalOpen(true)}
@@ -62,7 +62,7 @@ export const ProfileLayout = ({ user }: ProfileLayoutProps) => {
               }
             />
 
-            <div className='hidden lg:block' aria-hidden='true' />
+            <div className='hidden xl:block' aria-hidden='true' />
           </div>
 
           <div className='h-16' />

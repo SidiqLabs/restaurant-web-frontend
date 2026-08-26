@@ -27,7 +27,7 @@ const getInitial = (name: string) => {
 
 // Keep tokens, avoid hardcoded white.
 // Also keep styling consistent with other cards (ProfileSidebar already uses bg-card + border)
-const CARD = 'w-full rounded-2xl border border-border bg-card p-6 shadow-sm';
+const CARD = 'w-full max-w-full rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6';
 
 export const ProfileMainCard = ({
   user,
@@ -53,14 +53,14 @@ export const ProfileMainCard = ({
       <div className={CARD}>
         {!isEditing ? (
           <>
-            <div className='grid grid-cols-[56px_minmax(0,1fr)] items-start gap-4'>
-              <div className='relative h-14 w-14 overflow-hidden rounded-full bg-muted'>
+            <div className='grid grid-cols-[48px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[56px_minmax(0,1fr)] sm:gap-4'>
+              <div className='relative h-12 w-12 overflow-hidden sm:h-14 sm:w-14 rounded-full bg-muted'>
                 {avatarUrl ? (
                   <Image
                     src={avatarUrl}
                     alt='User avatar'
                     fill
-                    sizes='56px'
+                    sizes='(min-width: 640px) 56px, 48px'
                     className='object-cover'
                   />
                 ) : (
@@ -80,7 +80,7 @@ export const ProfileMainCard = ({
             </div>
 
             <div className='mt-6 border-t border-border pt-5'>
-              <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+              <div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
                 <div className='min-w-0'>
                   <p className='text-sm font-medium text-muted-foreground'>
                     Delivery Address
@@ -108,7 +108,7 @@ export const ProfileMainCard = ({
                 <Button
                   type='button'
                   variant='neutral'
-                  className='h-10 shrink-0 rounded-full px-4 text-sm font-medium'
+                  className='h-10 w-full shrink-0 rounded-full px-4 text-sm font-medium xl:w-auto'
                   onClick={onOpenDeliveryAddressAction}
                 >
                   {deliveryLocation
