@@ -78,3 +78,5 @@ next-env.d.ts
 # -----------------------------
 # .vscode/
 # .idea/
+# Local worker ownership state
+.work-locks.json
