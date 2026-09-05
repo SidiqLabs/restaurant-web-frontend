@@ -80,3 +80,5 @@ next-env.d.ts
 # .idea/
 # Local worker ownership state
 .work-locks.json
+.work-locks.json.*
+.work-locks.json.lock/

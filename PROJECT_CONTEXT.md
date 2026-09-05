@@ -1,5 +1,17 @@
 # Restaurant Web Frontend – Project Context
 
+## Authority and Instruction Hierarchy
+
+`PROJECT_CONTEXT.md` is the authoritative project governance and architecture source of truth for this repository. When instructions conflict, follow this order:
+
+1. Current explicit user instruction for the active session.
+2. `PROJECT_CONTEXT.md`.
+3. `AGENTS.md`.
+4. `docs/*`.
+5. `README` and historical documents.
+
+`.vercelignore` is deployment configuration only. It is not project governance.
+
 ## Assignment
 
 Challenge 9 – Restaurant Web Frontend (Next.js + TypeScript)

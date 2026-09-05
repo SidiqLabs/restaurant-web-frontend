@@ -1,0 +1,24 @@
+.env
+.env.*
+!.env.example
+
+# Local-only development and coordination artifacts
+.work-locks.json
+.work-locks.json.*
+.work-locks.json.lock/
+.git/
+.github/
+docs/
+AGENTS.md
+PROJECT_CONTEXT.md
+
+# Build/test artifacts
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+# Secret key material
+*.pem
+*.key
