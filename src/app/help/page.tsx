@@ -3,8 +3,10 @@ import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 
+type SearchParams = Record<string, string | string[] | undefined>;
+
 type HelpPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<SearchParams>;
 };
 
 const topicTitleMap: Record<string, string> = {
@@ -15,14 +17,15 @@ const topicTitleMap: Record<string, string> = {
   'contact-us': 'Contact Us',
 };
 
-const getTopic = (searchParams: HelpPageProps['searchParams']) => {
+const getTopic = (searchParams: SearchParams | undefined) => {
   const raw = searchParams?.topic;
   const value = Array.isArray(raw) ? raw[0] : raw;
   return value ?? 'faq';
 };
 
-export default function HelpPage({ searchParams }: HelpPageProps) {
-  const topic = getTopic(searchParams);
+export default async function HelpPage({ searchParams }: HelpPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const topic = getTopic(resolvedSearchParams);
   const title = topicTitleMap[topic] ?? 'Help';
 
   return (
