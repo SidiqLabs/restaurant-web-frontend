@@ -136,6 +136,27 @@ const LoginForm = () => {
         </div>
       </header>
 
+      {/* Tabs (UI only) */}
+      <div className='rounded-full bg-muted p-1'>
+        <div className='grid grid-cols-2 gap-1'>
+          <button
+            type='button'
+            className='h-10 rounded-full bg-card text-sm font-medium text-foreground shadow-sm'
+            aria-current='page'
+          >
+            Sign in
+          </button>
+
+          <button
+            type='button'
+            onClick={() => router.push('/auth/register')}
+            className='h-10 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground'
+          >
+            Sign up
+          </button>
+        </div>
+      </div>
+
       {serverError ? (
         <div className='rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3'>
           <p className='text-sm text-destructive'>{serverError}</p>
