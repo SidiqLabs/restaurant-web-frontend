@@ -253,6 +253,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
             onChange={(e) => setAddress(e.target.value)}
             placeholder='Example: Jl. Ahmad Yani No. 10, Bekasi'
             disabled={isBusy}
+            className='focus-visible:border-muted-foreground/60 focus-visible:ring-muted-foreground/20'
           />
 
           <Button
