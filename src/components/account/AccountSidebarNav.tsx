@@ -36,14 +36,17 @@ type AccountSidebarNavProps = {
 };
 
 const ITEM_BASE = cn(
-  'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors',
-  'hover:bg-muted',
+  'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium leading-5 transition-colors',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
   'cursor-pointer'
 );
 
-const ITEM_INACTIVE = 'text-foreground';
-const ITEM_ACTIVE = 'text-primary font-semibold';
+const ITEM_INACTIVE = 'text-foreground hover:bg-muted';
+const ITEM_ACTIVE = 'bg-accent text-primary font-semibold hover:bg-accent';
+const ICON_SLOT = cn(
+  'grid h-5 w-5 shrink-0 place-items-center text-current',
+  '[&>img]:h-5 [&>img]:w-5 [&>svg]:h-5 [&>svg]:w-5'
+);
 
 const isHrefItem = (item: AccountSidebarNavItem): item is NavItemHref => {
   return typeof (item as NavItemHref).href === 'string';
@@ -60,9 +63,15 @@ export const AccountSidebarNav = ({ items }: AccountSidebarNavProps) => {
 
         const content = (
           <>
-            {item.icon}
-            <span className='flex-1'>{item.label}</span>
-            {item.endAdornment ? item.endAdornment : null}
+            <span className={ICON_SLOT} aria-hidden='true'>
+              {item.icon}
+            </span>
+            <span className='min-w-0 flex-1 truncate'>{item.label}</span>
+            {item.endAdornment ? (
+              <span className={ICON_SLOT} aria-hidden='true'>
+                {item.endAdornment}
+              </span>
+            ) : null}
           </>
         );
 
@@ -71,7 +80,7 @@ export const AccountSidebarNav = ({ items }: AccountSidebarNavProps) => {
             <Link
               key={item.key}
               href={item.href}
-              className={cn(className, 'inline-flex')}
+              className={className}
               aria-current={item.isActive ? 'page' : undefined}
             >
               {content}

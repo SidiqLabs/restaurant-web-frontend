@@ -12,17 +12,13 @@ import {
   AccountSidebarNav,
   type AccountSidebarNavItem,
 } from '@/components/account/AccountSidebarNav';
+import { ArrowCircleIcon } from '@/components/icons/ArrowCircleIcon';
+import { FileIcon } from '@/components/icons/FileIcon';
 import { MarkerPinIcon } from '@/components/icons/MarkerPinIcon';
 import { cn } from '@/lib/utils';
 import { authTokenStorage } from '@/services/api/axios';
 import { authQueryKeys } from '@/services/queries/auth';
 import { cartQueryKeys } from '@/services/queries/cart';
-
-const ICONS = {
-  myOrders: '/assets/icons/file.svg',
-  myOrdersActive: '/assets/icons/file-red.svg',
-  logout: '/assets/icons/arrow-circle.svg',
-} as const;
 
 type OrdersSidebarProps = {
   userName?: string;
@@ -69,34 +65,19 @@ const OrdersSidebar = ({
   }, [queryClient, router]);
 
   const items = useMemo<AccountSidebarNavItem[]>(() => {
-    const ordersIconSrc = isOrders ? ICONS.myOrdersActive : ICONS.myOrders;
-
     return [
       {
         key: 'delivery',
         label: 'Delivery Address',
         href: FOCUS_DELIVERY_PROFILE_HREF,
-        icon: (
-          <MarkerPinIcon
-            className={cn('h-[18px] w-[18px]', 'text-foreground')}
-            aria-hidden
-          />
-        ),
+        icon: <MarkerPinIcon className='h-5 w-5' aria-hidden />,
       },
       {
         key: 'orders',
         label: 'My Orders',
         href: '/orders',
         isActive: isOrders,
-        icon: (
-          <Image
-            src={ordersIconSrc}
-            alt=''
-            width={18}
-            height={18}
-            aria-hidden='true'
-          />
-        ),
+        icon: <FileIcon className='h-5 w-5' aria-hidden />,
       },
       {
         key: 'logout',
@@ -104,28 +85,20 @@ const OrdersSidebar = ({
         onClick: () => {
           void handleLogout();
         },
-        icon: (
-          <Image
-            src={ICONS.logout}
-            alt=''
-            width={18}
-            height={18}
-            aria-hidden='true'
-          />
-        ),
+        icon: <ArrowCircleIcon className='h-5 w-5' aria-hidden />,
       },
     ];
   }, [handleLogout, isOrders]);
 
   return (
-    <aside className='w-full max-w-[260px]'>
-      <div className='rounded-2xl border border-border bg-card p-4 shadow-sm'>
+    <aside className='w-full'>
+      <div className='rounded-2xl border border-border bg-card p-6 shadow-sm'>
         {/* Profile navigation */}
         <Link
           href='/profile'
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-foreground transition-colors',
-            'hover:bg-muted',
+            'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium leading-5 transition-colors',
+            'text-foreground hover:bg-muted',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             'cursor-pointer'
           )}
@@ -148,7 +121,7 @@ const OrdersSidebar = ({
           </div>
 
           <div className='min-w-0 flex-1'>
-            <div className='truncate text-sm font-semibold'>{userName}</div>
+            <div className='truncate text-sm font-semibold text-current'>{userName}</div>
           </div>
         </Link>
 

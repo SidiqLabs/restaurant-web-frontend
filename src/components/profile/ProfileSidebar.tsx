@@ -12,6 +12,8 @@ import {
   AccountSidebarNav,
   type AccountSidebarNavItem,
 } from '@/components/account/AccountSidebarNav';
+import { ArrowCircleIcon } from '@/components/icons/ArrowCircleIcon';
+import { FileIcon } from '@/components/icons/FileIcon';
 import { MarkerPinIcon } from '@/components/icons/MarkerPinIcon';
 import { cn } from '@/lib/utils';
 import { authTokenStorage } from '@/services/api/axios';
@@ -23,11 +25,6 @@ type ProfileSidebarProps = {
   user: AuthUser;
   onOpenDeliveryAddressAction: () => void;
 };
-
-const ICONS = {
-  file: '/assets/icons/file.svg',
-  logout: '/assets/icons/arrow-circle.svg',
-} as const;
 
 const isLikelyAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
@@ -64,6 +61,7 @@ export const ProfileSidebar = ({
   // Active state from URL param (?focus=delivery)
   const focus = searchParams.get(FOCUS_PARAM);
   const isDeliveryActive = focus === FOCUS_DELIVERY;
+  const isProfileActive = !isDeliveryActive;
 
   const setFocusDelivery = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -96,13 +94,7 @@ export const ProfileSidebar = ({
 
   const items = useMemo<AccountSidebarNavItem[]>(() => {
     const deliveryIcon = (
-      <MarkerPinIcon
-        className={cn(
-          'h-5 w-5',
-          isDeliveryActive ? 'text-primary' : 'text-foreground'
-        )}
-        aria-hidden
-      />
+      <MarkerPinIcon className='h-5 w-5' aria-hidden />
     );
 
     const deliveryEndAdornment = hasLocation ? (
@@ -128,15 +120,7 @@ export const ProfileSidebar = ({
         key: 'orders',
         label: 'My Orders',
         href: '/orders',
-        icon: (
-          <Image
-            src={ICONS.file}
-            alt=''
-            width={20}
-            height={20}
-            aria-hidden='true'
-          />
-        ),
+        icon: <FileIcon className='h-5 w-5' aria-hidden />,
       },
       {
         key: 'logout',
@@ -144,15 +128,7 @@ export const ProfileSidebar = ({
         onClick: () => {
           void handleLogout();
         },
-        icon: (
-          <Image
-            src={ICONS.logout}
-            alt=''
-            width={20}
-            height={20}
-            aria-hidden='true'
-          />
-        ),
+        icon: <ArrowCircleIcon className='h-5 w-5' aria-hidden />,
       },
     ];
   }, [handleLogout, handleOpenDelivery, hasLocation, isDeliveryActive]);
@@ -164,13 +140,14 @@ export const ProfileSidebar = ({
         <Link
           href='/profile'
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-foreground transition-colors',
-            'hover:bg-muted',
+            'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium leading-5 transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             'cursor-pointer',
-            !isDeliveryActive && 'bg-muted/60'
+            isProfileActive
+              ? 'bg-accent text-primary font-semibold hover:bg-accent'
+              : 'text-foreground hover:bg-muted'
           )}
-          aria-current={!isDeliveryActive ? 'page' : undefined}
+          aria-current={isProfileActive ? 'page' : undefined}
           aria-label='Open profile'
         >
           <div className='relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted'>
@@ -183,14 +160,14 @@ export const ProfileSidebar = ({
                 className='object-cover'
               />
             ) : (
-              <div className='grid h-full w-full place-items-center text-xs font-semibold text-muted-foreground'>
+              <div className='grid h-full w-full place-items-center text-sm font-semibold text-muted-foreground'>
                 {getInitial(displayName)}
               </div>
             )}
           </div>
 
           <div className='min-w-0 flex-1'>
-            <p className='truncate text-sm font-semibold text-foreground'>
+            <p className='truncate text-sm font-semibold text-current'>
               {displayName}
             </p>
           </div>

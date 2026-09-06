@@ -354,7 +354,7 @@ const OrdersClient = () => {
 
   return (
     <main className='mx-auto w-full max-w-[1200px] px-4 pb-16 pt-10 sm:px-6 lg:px-8'>
-      <div className='grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start'>
+      <div className='grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[240px_minmax(0,1fr)] xl:items-start'>
         <div className='hidden xl:block'>
           <OrdersSidebar userName={userName} avatarUrl={avatarUrl} />
         </div>
