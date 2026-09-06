@@ -58,6 +58,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
 
   const [address, setAddress] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
+  const [addressDetailError, setAddressDetailError] = useState('');
   const [geo, setGeo] = useState<GeocodeResult | null>(null);
   const [localError, setLocalError] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -123,6 +124,7 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
     if (!open) return;
     setAddress('');
     setAddressDetail('');
+    setAddressDetailError('');
     setGeo(null);
     setLocalError('');
     setIsGeocoding(false);
@@ -159,11 +161,19 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
       return;
     }
 
+    const trimmedAddressDetail = addressDetail.trim();
+
+    if (!trimmedAddressDetail) {
+      setAddressDetailError('Address detail is required.');
+      return;
+    }
+
+    setAddressDetailError('');
     setIsSaving(true);
 
     const draft: DeliveryLocationDraft = {
       formattedAddress: geo.formattedAddress,
-      addressDetail: addressDetail.trim() || undefined,
+      addressDetail: trimmedAddressDetail,
       latitude: geo.latitude,
       longitude: geo.longitude,
       updatedAt: new Date().toISOString(),
@@ -269,25 +279,49 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
                   className='text-sm font-medium'
                 >
                   Address Detail
-                  <span className='ml-1 font-normal text-muted-foreground'>
-                    (Optional)
-                  </span>
                 </label>
 
                 <textarea
                   id='delivery-address-detail'
                   value={addressDetail}
-                  onChange={(e) => setAddressDetail(e.target.value)}
+                  onChange={(e) => {
+                    setAddressDetail(e.target.value);
+
+                    if (addressDetailError) {
+                      setAddressDetailError('');
+                    }
+                  }}
                   placeholder='House no., block, RT/RW, floor, landmark, etc.'
                   maxLength={250}
                   rows={3}
+                  required
+                  aria-invalid={Boolean(addressDetailError)}
+                  aria-describedby='delivery-address-detail-message'
                   disabled={isBusy}
-                  className='w-full resize-none rounded-xl border border-input bg-background p-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60'
+                  className={[
+                    'w-full resize-none rounded-xl border bg-background p-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60',
+                    addressDetailError
+                      ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/20'
+                      : 'border-input hover:border-muted-foreground/40 focus:border-muted-foreground/60 focus:ring-2 focus:ring-muted-foreground/20',
+                  ].join(' ')}
                 />
 
-                <p className='text-xs text-muted-foreground'>
-                  Add details that help the courier find the exact location.
-                </p>
+                {addressDetailError ? (
+                  <p
+                    id='delivery-address-detail-message'
+                    className='text-xs text-destructive'
+                  >
+                    {addressDetailError}
+                  </p>
+                ) : (
+                  <p
+                    id='delivery-address-detail-message'
+                    className='text-xs text-muted-foreground'
+                  >
+                    Required. Add details that help the courier find the exact
+                    location.
+                  </p>
+                )}
               </div>
             </div>
           )}
