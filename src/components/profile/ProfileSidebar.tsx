@@ -23,7 +23,7 @@ import type { AuthUser } from '@/types/auth';
 
 type ProfileSidebarProps = {
   user: AuthUser;
-  onOpenDeliveryAddressAction: () => void;
+  hasDeliveryLocation: boolean;
 };
 
 const isLikelyAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
@@ -39,7 +39,7 @@ const FOCUS_DELIVERY = 'delivery';
 
 export const ProfileSidebar = ({
   user,
-  onOpenDeliveryAddressAction,
+  hasDeliveryLocation,
 }: ProfileSidebarProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,12 +51,7 @@ export const ProfileSidebar = ({
   const avatarUrl =
     avatarRaw && isLikelyAbsoluteUrl(avatarRaw) ? avatarRaw : null;
 
-  const hasLocation =
-    typeof user.latitude === 'number' &&
-    typeof user.longitude === 'number' &&
-    Number.isFinite(user.latitude) &&
-    Number.isFinite(user.longitude) &&
-    !(user.latitude === 0 && user.longitude === 0);
+  const hasLocation = hasDeliveryLocation;
 
   // Active state from URL param (?focus=delivery)
   const focus = searchParams.get(FOCUS_PARAM);
@@ -68,12 +63,6 @@ export const ProfileSidebar = ({
     params.set(FOCUS_PARAM, FOCUS_DELIVERY);
     router.replace(`/profile?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
-
-  const handleOpenDelivery = useCallback(() => {
-    // Keep existing behavior (open modal), and ensure highlight becomes active.
-    onOpenDeliveryAddressAction();
-    setFocusDelivery();
-  }, [onOpenDeliveryAddressAction, setFocusDelivery]);
 
   const handleLogout = useCallback(async () => {
     // 1) Clear React Query caches that relate to auth/user/cart
@@ -112,7 +101,7 @@ export const ProfileSidebar = ({
         key: 'delivery',
         label: 'Delivery Address',
         icon: deliveryIcon,
-        onClick: handleOpenDelivery,
+        onClick: setFocusDelivery,
         isActive: isDeliveryActive,
         endAdornment: deliveryEndAdornment,
       },
@@ -131,7 +120,7 @@ export const ProfileSidebar = ({
         icon: <ArrowCircleIcon className='h-5 w-5' aria-hidden />,
       },
     ];
-  }, [handleLogout, handleOpenDelivery, hasLocation, isDeliveryActive]);
+  }, [handleLogout, setFocusDelivery, hasLocation, isDeliveryActive]);
 
   return (
     <aside className='w-full'>

@@ -354,13 +354,13 @@ const OrdersClient = () => {
 
   return (
     <main className='mx-auto w-full max-w-[1200px] px-4 pb-16 pt-10 sm:px-6 lg:px-8'>
-      <div className='grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[240px_minmax(0,1fr)] xl:items-start'>
-        <div className='hidden xl:block'>
+      <div className='grid min-w-0 grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-start xl:grid-cols-[240px_minmax(0,1fr)]'>
+        <div className='hidden md:block'>
           <OrdersSidebar userName={userName} avatarUrl={avatarUrl} />
         </div>
 
         <section className='min-w-0'>
-          <h1 className='text-3xl font-semibold tracking-tight'>My Orders</h1>
+          <h1 className='text-2xl font-semibold text-foreground'>My Orders</h1>
 
           <div className='mt-6 rounded-2xl border bg-card p-5 shadow-sm sm:p-6'>
             {/* Search */}

@@ -9,12 +9,9 @@ import { ProfileInfoRow } from '@/components/profile/ProfileInfoRow';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { AuthUser } from '@/types/auth';
-import type { DeliveryLocationDraft } from '@/types/location';
 
 type ProfileMainCardProps = {
   user: AuthUser;
-  deliveryLocation: DeliveryLocationDraft | null;
-  onOpenDeliveryAddressAction: () => void;
 };
 
 const isLikelyAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
@@ -31,8 +28,6 @@ const CARD = 'w-full max-w-full rounded-2xl border border-border bg-card p-4 sha
 
 export const ProfileMainCard = ({
   user,
-  deliveryLocation,
-  onOpenDeliveryAddressAction,
 }: ProfileMainCardProps) => {
   const [isEditing, setIsEditing] = React.useState(false);
 
@@ -79,44 +74,6 @@ export const ProfileMainCard = ({
               </div>
             </div>
 
-            <div className='mt-6 border-t border-border pt-5'>
-              <div className='flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between'>
-                <div className='min-w-0'>
-                  <p className='text-sm font-medium text-muted-foreground'>
-                    Delivery Address
-                  </p>
-
-                  {deliveryLocation ? (
-                    <div className='mt-2 space-y-2 text-sm'>
-                      <p className='break-words text-foreground'>
-                        {deliveryLocation.formattedAddress}
-                      </p>
-
-                      {deliveryLocation.addressDetail ? (
-                        <p className='break-words text-foreground'>
-                          {deliveryLocation.addressDetail}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className='mt-2 text-sm text-muted-foreground'>
-                      No delivery address saved yet.
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  type='button'
-                  variant='neutral'
-                  className='h-10 w-full shrink-0 rounded-full px-4 text-sm font-medium xl:w-auto'
-                  onClick={onOpenDeliveryAddressAction}
-                >
-                  {deliveryLocation
-                    ? 'Change Delivery Address'
-                    : 'Add Delivery Address'}
-                </Button>
-              </div>
-            </div>
 
             <Button
               type='button'
