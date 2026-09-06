@@ -433,10 +433,10 @@ const CheckoutClient = () => {
                       <>
                         <textarea
                           className={cn(
-                            'w-full resize-none rounded-xl border bg-background p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring',
+                            'w-full resize-none rounded-xl border bg-background p-3 text-sm text-foreground outline-none transition-colors',
                             errors.deliveryAddress
-                              ? 'border-destructive'
-                              : 'border-input'
+                              ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/20'
+                              : 'border-input hover:border-muted-foreground/40 focus:border-muted-foreground/60 focus:ring-2 focus:ring-muted-foreground/20'
                           )}
                           rows={3}
                           value={values.deliveryAddress}
@@ -453,8 +453,10 @@ const CheckoutClient = () => {
 
                         <input
                           className={cn(
-                            'w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring',
-                            errors.phone ? 'border-destructive' : 'border-input'
+                            'w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors',
+                            errors.phone
+                              ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/20'
+                              : 'border-input hover:border-muted-foreground/40 focus:border-muted-foreground/60 focus:ring-2 focus:ring-muted-foreground/20'
                           )}
                           value={values.phone}
                           onChange={(e) => setField('phone', e.target.value)}
@@ -727,7 +729,7 @@ const CheckoutClient = () => {
                   Notes (optional)
                 </label>
                 <textarea
-                  className='mt-1 w-full resize-none rounded-xl border border-input bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring'
+                  className='mt-1 w-full resize-none rounded-xl border border-input bg-background p-3 text-sm outline-none transition-colors hover:border-muted-foreground/40 focus:border-muted-foreground/60 focus:ring-2 focus:ring-muted-foreground/20'
                   rows={3}
                   value={values.notes ?? ''}
                   onChange={(e) => setField('notes', e.target.value)}

@@ -517,7 +517,7 @@ const ReviewModal = ({
                 className={cn(
                   'min-h-35 w-full resize-none rounded-2xl border bg-background p-4 text-sm text-foreground',
                   'placeholder:text-muted-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                  'focus-visible:outline-none focus-visible:border-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-muted-foreground/20 focus-visible:ring-offset-2'
                 )}
               />
             </div>
