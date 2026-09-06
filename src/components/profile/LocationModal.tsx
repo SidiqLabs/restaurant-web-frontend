@@ -211,8 +211,8 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
         ].join(' ')}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className='flex items-start justify-between'>
-          <div>
+        <div className='flex items-start justify-between gap-4'>
+          <div className='min-w-0 flex-1'>
             <h2 className='text-lg font-semibold'>Delivery Address</h2>
             <p className='mt-1 text-sm text-muted-foreground'>
               Type your address and we&apos;ll detect your delivery location.
@@ -221,10 +221,11 @@ export const LocationModal = ({ open, onClose }: LocationModalProps) => {
 
           <button
             ref={closeBtnRef}
+            type='button'
             onClick={safeClose}
             disabled={isBusy}
             aria-label='Close delivery address modal'
-            className='grid h-10 w-10 place-items-center rounded-full border bg-background hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60'
+            className='grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-background hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60'
           >
             <Image
               src={ICONS.close}
