@@ -97,3 +97,18 @@ Routine lock/unlock activity MUST NOT create commits on `main`.
 
 Final task completion requires successful release and final `npm run lock:list`.
 <!-- DISTRIBUTED_WORK_LOCKS_V2_END -->
+
+## Remote Selection
+
+Distributed work locks resolve the Git remote in this order:
+
+1. `WORK_LOCK_REMOTE` when explicitly provided.
+2. The tracking remote configured for the current Git branch.
+3. `origin` as the final fallback.
+
+For example, when local `main` tracks `personal/main`, work-lock commands
+automatically use `personal/work-locks`. This allows multiple devices to share
+the same distributed lock state without hard-coding a developer-specific
+remote name.
+
+`WORK_LOCK_REMOTE_BRANCH` can override the default `work-locks` branch name.

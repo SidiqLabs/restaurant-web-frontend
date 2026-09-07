@@ -20,8 +20,48 @@ const LOCAL_FILE = path.join(ROOT, '.work-locks.json');
 const DEVICE_FILE = path.join(ROOT, '.work-device');
 const MUTEX_DIR = path.join(ROOT, '.work-locks.guard');
 
-const REMOTE = process.env.WORK_LOCK_REMOTE || 'origin';
-const BRANCH = process.env.WORK_LOCK_REMOTE_BRANCH || 'work-locks';
+function resolveTrackingRemote() {
+  const branchProbe = spawnSync(
+    'git',
+    ['symbolic-ref', '--quiet', '--short', 'HEAD'],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: process.env,
+    }
+  );
+
+  if (branchProbe.status !== 0) return '';
+
+  const branch = branchProbe.stdout.trim();
+  if (!branch) return '';
+
+  const remoteProbe = spawnSync(
+    'git',
+    ['config', '--get', `branch.${branch}.remote`],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: process.env,
+    }
+  );
+
+  if (remoteProbe.status !== 0) return '';
+
+  const remote = remoteProbe.stdout.trim();
+
+  // "." means the current repository, not a usable Git remote.
+  return remote && remote !== '.' ? remote : '';
+}
+
+const REMOTE =
+  process.env.WORK_LOCK_REMOTE ||
+  resolveTrackingRemote() ||
+  'origin';
+
+const BRANCH =
+  process.env.WORK_LOCK_REMOTE_BRANCH ||
+  'work-locks';
 const REMOTE_REF = `refs/heads/${BRANCH}`;
 const STALE_HOURS = Number(process.env.WORK_LOCK_STALE_HOURS || '12');
 
