@@ -55,3 +55,45 @@ Wrong-owner removal is rejected. Duplicate acquisition by the same owner and sco
 ## Concurrency Limits
 
 This is a local soft-lock helper. Writes use a simple local lock directory and atomic rename to reduce accidental partial writes, but it is not a distributed lock and does not coordinate across machines or Git remotes.
+
+<!-- DISTRIBUTED_WORK_LOCKS_V2_START -->
+
+# Distributed Work Locks V2
+
+This section supersedes earlier local-only coordination notes.
+
+Two coordinated layers are used:
+
+1. Local: `.work-locks.json`
+2. Cross-device: `locks.json` on remote branch `work-locks`
+
+`.work-locks.json`, `.work-device`, and `.work-locks.guard/` remain local-only and Git-ignored.
+
+Normal commands remain:
+
+`npm run lock:list`
+`npm run lock:check -- path/to/file`
+`npm run lock:add -- <owner> <scope> path/to/file`
+`npm run lock:remove -- <owner> <scope>`
+
+Per-device setup:
+
+`npm run lock:device -- sidiq-hp`
+
+or:
+
+`npm run lock:device -- sidiq-laptop`
+
+Remote coordination:
+
+`npm run lock:remote:init`
+`npm run lock:remote:status`
+
+Acquisition fails closed. `lock:add` reads current remote state, checks overlap, and updates using an expected remote commit lease. Concurrent updates are rejected.
+
+Stale locks remain blocking and are never automatically stolen.
+
+Routine lock/unlock activity MUST NOT create commits on `main`.
+
+Final task completion requires successful release and final `npm run lock:list`.
+<!-- DISTRIBUTED_WORK_LOCKS_V2_END -->

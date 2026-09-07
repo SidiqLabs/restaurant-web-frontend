@@ -40,3 +40,17 @@ Before modifying source, config, docs, or tooling files:
 Do not lock broad paths such as `src/**` when the task only needs a few files. Lock metadata in `.work-locks.json` is local-only and must not be committed or pushed.
 
 See `docs/work-locks.md` for command details. Project architecture still follows `PROJECT_CONTEXT.md`.
+
+<!-- DISTRIBUTED_WORK_LOCKS_V2_START -->
+## Distributed work-lock override
+
+Work locks are no longer local-only.
+
+Every modifying worker MUST continue using `lock:list`, `lock:check`, `lock:add`, and `lock:remove`.
+
+These commands now coordinate both local state and remote branch `work-locks`.
+
+A path is FREE only when no overlapping local or remote ownership exists. Remote read failure is a stop condition. Never bypass, steal, or manually rewrite another device's lock.
+
+Each clone requires local `.work-device`, for example `sidiq-hp` or `sidiq-laptop`.
+<!-- DISTRIBUTED_WORK_LOCKS_V2_END -->

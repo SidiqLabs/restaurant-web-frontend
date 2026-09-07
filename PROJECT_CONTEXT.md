@@ -353,3 +353,38 @@ Critical runtime smoke testing is required when the task changes user-visible be
 - Refactor & Polish: DONE
 
 Project Status: ✅ COMPLETED
+
+<!-- DISTRIBUTED_WORK_LOCKS_V2_START -->
+## Distributed Work Locks V2 — 2026-09-07
+
+This section supersedes earlier local-only work-lock rules.
+
+Work locking now has two coordinated layers:
+
+- `.work-locks.json` remains local and Git-ignored.
+- `.work-device` remains local and Git-ignored and identifies the clone/device.
+- Cross-device ownership is stored in `locks.json` on remote branch `work-locks`.
+- Routine lock/unlock operations MUST NOT create commits on `main`.
+- `lock:list` and `lock:check` consult local and remote state.
+- Remote coordination read failure is a stop condition.
+- `lock:add` acquires remote ownership atomically before local registration.
+- Concurrent remote updates are rejected.
+- Automatic lock stealing is forbidden.
+- Stale locks remain blocking until explicitly resolved.
+- A path is FREE only when no overlapping local or remote ownership exists.
+- Final DoD requires release plus final `npm run lock:list`.
+
+One-time device setup:
+
+`npm run lock:device -- <device-name>`
+
+Examples: `sidiq-hp`, `sidiq-laptop`.
+
+Remote commands:
+
+`npm run lock:remote:init`
+`npm run lock:remote:status`
+<!-- DISTRIBUTED_WORK_LOCKS_V2_END -->
+
+### CHANGELOG — 2026-09-07
+Work-lock coordination upgraded from local-only to dual-layer local + remote distributed locking for safe HP/laptop parallel work.

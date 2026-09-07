@@ -82,3 +82,5 @@ next-env.d.ts
 .work-locks.json
 .work-locks.json.*
 .work-locks.json.lock/
+.work-device
+.work-locks.guard/

@@ -1,444 +1,682 @@
 #!/usr/bin/env node
-import {
-  closeSync,
-  existsSync,
-  fsyncSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+
+import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '..');
-const lockFile = path.join(repoRoot, '.work-locks.json');
-const writeLockDir = `${lockFile}.lock`;
-const VALID_STATUSES = new Set(['ACTIVE', 'SHARED']);
-const OWNER_SCOPE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const MAX_LOCKS = 200;
-const MAX_PATHS_PER_LOCK = 200;
+const rootProbe = spawnSync(
+  'git',
+  ['rev-parse', '--show-toplevel'],
+  { encoding: 'utf8' }
+);
 
-class CliError extends Error {
-  constructor(message, code = 1) {
-    super(message);
-    this.code = code;
-  }
+if (rootProbe.status !== 0) {
+  console.error('ERROR: not inside a Git repository');
+  process.exit(1);
 }
 
-const [, , command, ...args] = process.argv;
+const ROOT = rootProbe.stdout.trim();
+const LOCAL_FILE = path.join(ROOT, '.work-locks.json');
+const DEVICE_FILE = path.join(ROOT, '.work-device');
+const MUTEX_DIR = path.join(ROOT, '.work-locks.guard');
 
-function printUsage() {
-  console.log(`Usage:
-  npm run lock:list
-  npm run lock:check -- <path>
-  npm run lock:add -- [--shared] <owner> <scope> <path...>
-  npm run lock:remove -- <owner> <scope>`);
-}
+const REMOTE = process.env.WORK_LOCK_REMOTE || 'origin';
+const BRANCH = process.env.WORK_LOCK_REMOTE_BRANCH || 'work-locks';
+const REMOTE_REF = `refs/heads/${BRANCH}`;
+const STALE_HOURS = Number(process.env.WORK_LOCK_STALE_HOURS || '12');
 
-function fail(message, code = 1) {
-  throw new CliError(message, code);
-}
-
-function hasControlCharacter(value) {
-  return Array.from(value).some((char) => {
-    const code = char.charCodeAt(0);
-    return code < 32 || code === 127;
+function git(args, { input, allowFail = false, env = {} } = {}) {
+  const result = spawnSync('git', args, {
+    cwd: ROOT,
+    encoding: 'utf8',
+    input,
+    env: { ...process.env, ...env },
   });
+
+  if (result.status !== 0 && !allowFail) {
+    const detail = (result.stderr || result.stdout || '').trim();
+    throw new Error(
+      `git ${args.join(' ')} failed${detail ? `: ${detail}` : ''}`
+    );
+  }
+
+  return result;
 }
 
-function validateToken(label, value) {
-  if (typeof value !== 'string' || value.length === 0) {
-    fail(`ERROR: ${label} is required.`);
+function normalizePath(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('Invalid empty lock path');
   }
-  if (!OWNER_SCOPE_RE.test(value)) {
-    fail(
-      `ERROR: Invalid ${label}. Use 1-64 characters: letters, numbers, dot, underscore, or hyphen. It must start with a letter or number.`,
+
+  let p = value.trim().replaceAll('\\', '/');
+
+  while (p.startsWith('./')) p = p.slice(2);
+
+  p = path.posix.normalize(p);
+
+  if (
+    p === '.' ||
+    p === '..' ||
+    p.startsWith('../') ||
+    path.posix.isAbsolute(p)
+  ) {
+    throw new Error(`Invalid repository path: ${value}`);
+  }
+
+  return p;
+}
+
+function normalizeLock(lock) {
+  if (
+    !lock ||
+    typeof lock.owner !== 'string' ||
+    typeof lock.scope !== 'string' ||
+    !Array.isArray(lock.paths)
+  ) {
+    throw new Error('Malformed lock entry');
+  }
+
+  const started =
+    typeof lock.startedAt === 'string'
+      ? lock.startedAt
+      : new Date(0).toISOString();
+
+  return {
+    owner: lock.owner,
+    scope: lock.scope,
+    device:
+      typeof lock.device === 'string' && lock.device
+        ? lock.device
+        : 'legacy-local',
+    paths: [...new Set(lock.paths.map(normalizePath))].sort(),
+    startedAt: started,
+    updatedAt:
+      typeof lock.updatedAt === 'string'
+        ? lock.updatedAt
+        : started,
+  };
+}
+
+function normalizeState(state) {
+  if (!state || !Array.isArray(state.locks)) {
+    throw new Error('Malformed lock state');
+  }
+
+  return {
+    version: 2,
+    locks: state.locks.map(normalizeLock),
+  };
+}
+
+function readLocal() {
+  if (!fs.existsSync(LOCAL_FILE)) {
+    return { version: 2, locks: [] };
+  }
+
+  try {
+    return normalizeState(
+      JSON.parse(fs.readFileSync(LOCAL_FILE, 'utf8'))
+    );
+  } catch (error) {
+    throw new Error(`Invalid .work-locks.json: ${error.message}`);
+  }
+}
+
+function writeLocal(state) {
+  const tmp = `${LOCAL_FILE}.tmp-${process.pid}`;
+
+  fs.writeFileSync(
+    tmp,
+    JSON.stringify(normalizeState(state), null, 2) + '\n'
+  );
+
+  fs.renameSync(tmp, LOCAL_FILE);
+}
+
+function device(required = true) {
+  if (!fs.existsSync(DEVICE_FILE)) {
+    if (!required) return null;
+
+    throw new Error(
+      'Device identity missing. Run: npm run lock:device -- <device-name>'
+    );
+  }
+
+  const value = fs.readFileSync(DEVICE_FILE, 'utf8').trim();
+
+  if (!/^[A-Za-z0-9._-]{2,64}$/.test(value)) {
+    throw new Error('Invalid .work-device identity');
+  }
+
+  return value;
+}
+
+function setDevice(value) {
+  if (!/^[A-Za-z0-9._-]{2,64}$/.test(value || '')) {
+    throw new Error('Invalid device name');
+  }
+
+  fs.writeFileSync(DEVICE_FILE, `${value}\n`);
+  console.log(`DEVICE=${value}`);
+}
+
+function overlapPath(a, b) {
+  return (
+    a === b ||
+    a.startsWith(`${b}/`) ||
+    b.startsWith(`${a}/`)
+  );
+}
+
+function overlapLock(lock, requested) {
+  return lock.paths.some((a) =>
+    requested.some((b) => overlapPath(a, b))
+  );
+}
+
+function stale(lock) {
+  const t = Date.parse(lock.updatedAt);
+
+  return (
+    Number.isFinite(t) &&
+    Date.now() - t > STALE_HOURS * 3600000
+  );
+}
+
+function remoteState({ allowMissing = false } = {}) {
+  const fetch = git(
+    ['fetch', '--quiet', REMOTE, BRANCH],
+    { allowFail: true }
+  );
+
+  if (fetch.status !== 0) {
+    const detail = `${fetch.stderr || ''} ${fetch.stdout || ''}`;
+
+    if (
+      allowMissing &&
+      /couldn't find remote ref|remote ref does not exist|not found/i.test(
+        detail
+      )
+    ) {
+      return {
+        exists: false,
+        oid: null,
+        state: { version: 2, locks: [] },
+      };
+    }
+
+    throw new Error(
+      `Cannot read remote lock branch ${REMOTE}/${BRANCH}. Failing closed.`
+    );
+  }
+
+  const oid = git(['rev-parse', 'FETCH_HEAD']).stdout.trim();
+
+  const show = git(
+    ['show', `${oid}:locks.json`],
+    { allowFail: true }
+  );
+
+  if (show.status !== 0) {
+    throw new Error(`${BRANCH} is missing locks.json`);
+  }
+
+  let parsed;
+
+  try {
+    parsed = JSON.parse(show.stdout);
+  } catch {
+    throw new Error(`${BRANCH}/locks.json contains invalid JSON`);
+  }
+
+  return {
+    exists: true,
+    oid,
+    state: normalizeState(parsed),
+  };
+}
+
+function createStateCommit(state, parent = null) {
+  const payload =
+    JSON.stringify(normalizeState(state), null, 2) + '\n';
+
+  const blob = git(
+    ['hash-object', '-w', '--stdin'],
+    { input: payload }
+  ).stdout.trim();
+
+  const tree = git(
+    ['mktree'],
+    { input: `100644 blob ${blob}\tlocks.json\n` }
+  ).stdout.trim();
+
+  const args = ['commit-tree', tree];
+
+  if (parent) args.push('-p', parent);
+
+  args.push(
+    '-m',
+    `work-locks: update ${new Date().toISOString()}`
+  );
+
+  return git(args, {
+    env: {
+      GIT_AUTHOR_NAME: 'Work Lock',
+      GIT_AUTHOR_EMAIL: 'work-lock@local',
+      GIT_COMMITTER_NAME: 'Work Lock',
+      GIT_COMMITTER_EMAIL: 'work-lock@local',
+    },
+  }).stdout.trim();
+}
+
+function initRemote() {
+  const current = remoteState({ allowMissing: true });
+
+  if (current.exists) {
+    console.log(`REMOTE_BRANCH=${BRANCH}`);
+    console.log('REMOTE_INIT=ALREADY_EXISTS');
+    return;
+  }
+
+  const commit = createStateCommit({
+    version: 2,
+    locks: [],
+  });
+
+  const push = git(
+    ['push', '--quiet', REMOTE, `${commit}:${REMOTE_REF}`],
+    { allowFail: true }
+  );
+
+  if (push.status !== 0) {
+    throw new Error(
+      'Remote branch creation failed. Another device may have created it.'
+    );
+  }
+
+  console.log(`REMOTE_BRANCH=${BRANCH}`);
+  console.log('REMOTE_INIT=CREATED');
+}
+
+function writeRemote(state, expectedOid) {
+  const commit = createStateCommit(state, expectedOid);
+
+  const push = git(
+    [
+      'push',
+      '--quiet',
+      `--force-with-lease=${REMOTE_REF}:${expectedOid}`,
+      REMOTE,
+      `${commit}:${REMOTE_REF}`,
+    ],
+    { allowFail: true }
+  );
+
+  if (push.status !== 0) {
+    throw new Error(
+      'REMOTE_LOCK_RACE: remote state changed. Check again.'
     );
   }
 }
 
-function normalizePath(inputPath) {
-  if (typeof inputPath !== 'string' || inputPath.trim().length === 0) {
-    fail('ERROR: Path is required.');
-  }
+function combined(local, remote) {
+  const map = new Map();
 
-  if (hasControlCharacter(inputPath)) {
-    fail(`ERROR: Invalid path contains control characters: ${inputPath}`);
-  }
+  for (const [source, locks] of [
+    ['LOCAL', local],
+    ['REMOTE', remote],
+  ]) {
+    for (const lock of locks) {
+      const key = [
+        lock.owner,
+        lock.scope,
+        lock.device,
+        ...lock.paths,
+      ].join('|');
 
-  if (/^[A-Za-z]:/.test(inputPath) || inputPath.startsWith('\\\\')) {
-    fail(`ERROR: Path must be relative to the repository: ${inputPath}`);
-  }
-
-  const normalizedInput = inputPath.trim().replaceAll('\\', '/').replace(/\/+/g, '/');
-  const isDirectoryGlob = normalizedInput.endsWith('/**');
-  const pathToResolve = isDirectoryGlob ? normalizedInput.slice(0, -3) : normalizedInput;
-  const absolute = path.resolve(repoRoot, pathToResolve);
-  const relative = path.relative(repoRoot, absolute);
-
-  if (
-    relative === '' ||
-    relative.startsWith('..') ||
-    path.isAbsolute(relative) ||
-    relative.split(path.sep).includes('..')
-  ) {
-    fail(`ERROR: Path escapes repository: ${inputPath}`);
-  }
-
-  const repoPath = relative.split(path.sep).join('/').replace(/^\.\//, '').replace(/\/+$/g, '');
-
-  if (repoPath.length === 0 || repoPath === '.') {
-    fail('ERROR: Repository root cannot be locked. Use the smallest reasonable path.');
-  }
-
-  return isDirectoryGlob ? `${repoPath}/**` : repoPath;
-}
-
-function validateStatus(status) {
-  if (!VALID_STATUSES.has(status)) {
-    fail(`ERROR: Invalid lock status "${status}". Allowed: ACTIVE, SHARED.`);
-  }
-}
-
-function normalizeLock(rawLock, index) {
-  if (!rawLock || typeof rawLock !== 'object' || Array.isArray(rawLock)) {
-    fail(`ERROR: Invalid lock entry at index ${index}.`);
-  }
-
-  const { owner, scope, status = 'ACTIVE', startedAt, paths } = rawLock;
-  validateToken(`locks[${index}].owner`, owner);
-  validateToken(`locks[${index}].scope`, scope);
-  validateStatus(status);
-
-  if (typeof startedAt !== 'string' || startedAt.length === 0 || Number.isNaN(Date.parse(startedAt))) {
-    fail(`ERROR: Invalid startedAt for lock ${owner}/${scope}.`);
-  }
-
-  if (!Array.isArray(paths) || paths.length === 0) {
-    fail(`ERROR: Lock ${owner}/${scope} must contain at least one path.`);
-  }
-
-  if (paths.length > MAX_PATHS_PER_LOCK) {
-    fail(`ERROR: Lock ${owner}/${scope} has too many paths.`);
-  }
-
-  const uniquePaths = [];
-  const seen = new Set();
-  for (const lockPath of paths) {
-    const normalized = normalizePath(lockPath);
-    if (!seen.has(normalized)) {
-      seen.add(normalized);
-      uniquePaths.push(normalized);
-    }
-  }
-
-  return {
-    owner,
-    scope,
-    status,
-    startedAt,
-    paths: uniquePaths,
-  };
-}
-
-function pathsOverlap(left, right) {
-  const normalizeDirectoryPrefix = (value) => {
-    if (value.endsWith('/**')) {
-      return `${value.slice(0, -3).replace(/\/+$/g, '')}/`;
-    }
-    return null;
-  };
-
-  if (left === right) {
-    return true;
-  }
-
-  const leftDir = normalizeDirectoryPrefix(left);
-  const rightDir = normalizeDirectoryPrefix(right);
-
-  if (leftDir && rightDir) {
-    return leftDir.startsWith(rightDir) || rightDir.startsWith(leftDir);
-  }
-
-  if (leftDir) {
-    return right.startsWith(leftDir);
-  }
-
-  if (rightDir) {
-    return left.startsWith(rightDir);
-  }
-
-  return left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
-}
-
-function validateNoInternalAmbiguity(locks) {
-  if (locks.length > MAX_LOCKS) {
-    fail(`ERROR: Too many work locks (${locks.length}). Please clean up old locks explicitly.`);
-  }
-
-  for (let leftIndex = 0; leftIndex < locks.length; leftIndex += 1) {
-    const left = locks[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < locks.length; rightIndex += 1) {
-      const right = locks[rightIndex];
-      for (const leftPath of left.paths) {
-        for (const rightPath of right.paths) {
-          if (pathsOverlap(leftPath, rightPath)) {
-            fail(
-              `ERROR: Ambiguous lock state. ${leftPath} (${left.owner}/${left.scope}) overlaps ${rightPath} (${right.owner}/${right.scope}). Resolve manually before continuing.`,
-            );
-          }
-        }
+      if (map.has(key)) {
+        map.get(key).source = 'BOTH';
+      } else {
+        map.set(key, { ...lock, source });
       }
     }
   }
+
+  return [...map.values()];
 }
 
-function readLocks() {
-  if (!existsSync(lockFile)) {
-    return { version: 1, locks: [] };
-  }
+function list() {
+  const local = readLocal();
+  const remote = remoteState();
 
-  const raw = readFileSync(lockFile, 'utf8');
-  if (raw.trim().length === 0) {
-    return { version: 1, locks: [] };
-  }
+  const locks = combined(local.locks, remote.state.locks);
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    fail(`ERROR: Failed to parse .work-locks.json. Fix the JSON manually before continuing.\n${error.message}`);
-  }
-
-  if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.locks)) {
-    fail('ERROR: Invalid .work-locks.json structure. Expected { "version": 1, "locks": [] }.');
-  }
-
-  const locks = parsed.locks.map((lock, index) => normalizeLock(lock, index));
-  validateNoInternalAmbiguity(locks);
-  return { version: 1, locks };
-}
-
-function acquireWriteLock() {
-  try {
-    mkdirSync(writeLockDir);
-  } catch (error) {
-    fail(`ERROR: Could not acquire local write lock. Another lock command may be running.\n${error.message}`);
-  }
-}
-
-function releaseWriteLock() {
-  rmSync(writeLockDir, { recursive: true, force: true });
-}
-
-function writeLocks(data) {
-  validateNoInternalAmbiguity(data.locks);
-  const tempFile = `${lockFile}.${process.pid}.tmp`;
-  const payload = `${JSON.stringify(data, null, 2)}\n`;
-  let descriptor;
-
-  try {
-    descriptor = openSync(tempFile, 'w', 0o600);
-    writeFileSync(descriptor, payload, 'utf8');
-    fsyncSync(descriptor);
-    closeSync(descriptor);
-    descriptor = undefined;
-    renameSync(tempFile, lockFile);
-  } catch (error) {
-    if (descriptor !== undefined) {
-      closeSync(descriptor);
-    }
-    rmSync(tempFile, { force: true });
-    fail(`ERROR: Failed to write .work-locks.json safely.\n${error.message}`);
-  }
-}
-
-function findOverlappingLocks(locks, targetPath) {
-  return locks.filter((lock) => lock.paths.some((lockPath) => pathsOverlap(lockPath, targetPath)));
-}
-
-function listLocks() {
-  const { locks } = readLocks();
   if (locks.length === 0) {
     console.log('No active work locks');
     return;
   }
 
-  console.log('ACTIVE WORK LOCKS');
-  console.log('');
-  locks.forEach((lock, index) => {
-    if (index > 0) {
-      console.log('');
-    }
-    console.log(`Owner : ${lock.owner}`);
-    console.log(`Scope : ${lock.scope}`);
-    console.log(`Status: ${lock.status}`);
-    console.log(`Started: ${lock.startedAt}`);
-    console.log('');
-    console.log('Paths:');
-    lock.paths.forEach((lockPath) => console.log(`- ${lockPath}`));
-  });
+  for (const lock of locks) {
+    console.log(`${stale(lock) ? 'STALE' : 'ACTIVE'} ${lock.source}`);
+    console.log(`  Owner : ${lock.owner}`);
+    console.log(`  Device: ${lock.device}`);
+    console.log(`  Scope : ${lock.scope}`);
+    console.log(`  Paths : ${lock.paths.join(', ')}`);
+  }
 }
 
-function checkPath(pathArg) {
-  const targetPath = normalizePath(pathArg);
-  const { locks } = readLocks();
-  const overlaps = findOverlappingLocks(locks, targetPath);
+function check(rawPaths) {
+  const requested = rawPaths.map(normalizePath);
 
-  if (overlaps.length === 0) {
-    console.log(`FREE: ${targetPath}`);
+  if (requested.length === 0) {
+    throw new Error('lock:check requires at least one path');
+  }
+
+  const local = readLocal();
+  const remote = remoteState();
+
+  const conflicts = combined(
+    local.locks,
+    remote.state.locks
+  ).filter((lock) => overlapLock(lock, requested));
+
+  if (conflicts.length === 0) {
+    console.log('FREE');
     return;
   }
 
-  const lock = overlaps[0];
-  console.error(lock.status === 'SHARED' ? 'SHARED' : 'LOCKED');
-  console.error('');
-  console.error('Path:');
-  console.error(targetPath);
-  console.error('');
-  console.error('Owner:');
-  console.error(lock.owner);
-  console.error('');
-  console.error('Scope:');
-  console.error(lock.scope);
-  process.exit(2);
+  for (const lock of conflicts) {
+    console.log(
+      `${stale(lock) ? 'STALE' : 'ACTIVE'} ${lock.source}: ` +
+      `${lock.owner}@${lock.device} / ${lock.scope}`
+    );
+  }
+
+  process.exitCode = 2;
 }
 
-function addLock(rawArgs) {
-  const nextArgs = [...rawArgs];
-  const sharedIndex = nextArgs.indexOf('--shared');
-  const status = sharedIndex === -1 ? 'ACTIVE' : 'SHARED';
-  if (sharedIndex !== -1) {
-    nextArgs.splice(sharedIndex, 1);
-  }
-
-  const [owner, scope, ...rawPaths] = nextArgs;
-  validateToken('owner', owner);
-  validateToken('scope', scope);
-
-  if (rawPaths.length === 0) {
-    fail('ERROR: At least one path is required.');
-  }
-
-  const requestedPaths = [...new Set(rawPaths.map((rawPath) => normalizePath(rawPath)))];
-
-  acquireWriteLock();
+function mutex(fn) {
   try {
-    const data = readLocks();
+    fs.mkdirSync(MUTEX_DIR);
+  } catch (error) {
+    if (error?.code === 'EEXIST') {
+      throw new Error(
+        'Another local lock command is already running'
+      );
+    }
+    throw error;
+  }
 
-    const conflictingLocks = data.locks.filter((lock) => {
-      const sameOwnerScope = lock.owner === owner && lock.scope === scope;
-      return !sameOwnerScope && requestedPaths.some((requestedPath) => lock.paths.some((lockPath) => pathsOverlap(lockPath, requestedPath)));
+  try {
+    fn();
+  } finally {
+    fs.rmSync(MUTEX_DIR, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
+
+function add(owner, scope, rawPaths) {
+  if (!owner || !scope || rawPaths.length === 0) {
+    throw new Error(
+      'Usage: lock:add -- <owner> <scope> <path...>'
+    );
+  }
+
+  const currentDevice = device();
+  const requested = [
+    ...new Set(rawPaths.map(normalizePath)),
+  ].sort();
+
+  mutex(() => {
+    const local = readLocal();
+    const remote = remoteState();
+
+    const conflicts = combined(
+      local.locks,
+      remote.state.locks
+    ).filter((lock) => {
+      const mine =
+        lock.owner === owner &&
+        lock.scope === scope &&
+        (
+          lock.device === currentDevice ||
+          lock.device === 'legacy-local'
+        );
+
+      return !mine && overlapLock(lock, requested);
     });
 
-    if (conflictingLocks.length > 0) {
-      const conflict = conflictingLocks[0];
-      const conflictPath = requestedPaths.find((requestedPath) => conflict.paths.some((lockPath) => pathsOverlap(lockPath, requestedPath)));
-      fail(`ERROR: LOCK CONFLICT
-
-${conflictPath}
-is already owned by:
-
-owner: ${conflict.owner}
-scope: ${conflict.scope}
-status: ${conflict.status}`);
+    if (conflicts.length > 0) {
+      for (const lock of conflicts) {
+        console.error(
+          `BLOCKED: ${lock.owner}@${lock.device} / ${lock.scope}`
+        );
+      }
+      throw new Error('Overlapping lock exists');
     }
 
-    const existing = data.locks.find((lock) => lock.owner === owner && lock.scope === scope);
-    if (existing) {
-      if (existing.status !== status) {
-        fail(`ERROR: Existing lock ${owner}/${scope} has status ${existing.status}; requested ${status}. Remove and recreate explicitly if needed.`);
-      }
+    const now = new Date().toISOString();
 
-      for (const requestedPath of requestedPaths) {
-        if (!existing.paths.some((lockPath) => pathsOverlap(lockPath, requestedPath) && lockPath === requestedPath)) {
-          existing.paths.push(requestedPath);
-        }
-      }
-    } else {
-      data.locks.push({
-        owner,
-        scope,
-        status,
-        startedAt: new Date().toISOString(),
-        paths: requestedPaths,
-      });
-    }
+    const existingRemote = remote.state.locks.find(
+      (lock) =>
+        lock.owner === owner &&
+        lock.scope === scope &&
+        lock.device === currentDevice
+    );
 
-    data.locks.sort((left, right) => {
-      const ownerCompare = left.owner.localeCompare(right.owner);
-      if (ownerCompare !== 0) return ownerCompare;
-      return left.scope.localeCompare(right.scope);
+    const paths = [
+      ...new Set([
+        ...(existingRemote?.paths || []),
+        ...requested,
+      ]),
+    ].sort();
+
+    const newRemote = remote.state.locks.filter(
+      (lock) =>
+        !(
+          lock.owner === owner &&
+          lock.scope === scope &&
+          lock.device === currentDevice
+        )
+    );
+
+    newRemote.push({
+      owner,
+      scope,
+      device: currentDevice,
+      paths,
+      startedAt: existingRemote?.startedAt || now,
+      updatedAt: now,
     });
 
-    writeLocks(data);
-    console.log(`${status} lock registered`);
-    console.log(`Owner : ${owner}`);
-    console.log(`Scope : ${scope}`);
-    console.log('Paths:');
-    requestedPaths.forEach((lockPath) => console.log(`- ${lockPath}`));
-  } finally {
-    releaseWriteLock();
-  }
+    writeRemote(
+      { version: 2, locks: newRemote },
+      remote.oid
+    );
+
+    const existingLocal = local.locks.find(
+      (lock) =>
+        lock.owner === owner &&
+        lock.scope === scope &&
+        (
+          lock.device === currentDevice ||
+          lock.device === 'legacy-local'
+        )
+    );
+
+    const newLocal = local.locks.filter(
+      (lock) =>
+        !(
+          lock.owner === owner &&
+          lock.scope === scope &&
+          (
+            lock.device === currentDevice ||
+            lock.device === 'legacy-local'
+          )
+        )
+    );
+
+    newLocal.push({
+      owner,
+      scope,
+      device: currentDevice,
+      paths: [
+        ...new Set([
+          ...(existingLocal?.paths || []),
+          ...requested,
+        ]),
+      ].sort(),
+      startedAt: existingLocal?.startedAt || now,
+      updatedAt: now,
+    });
+
+    writeLocal({
+      version: 2,
+      locks: newLocal,
+    });
+
+    console.log('LOCK_ACQUIRED');
+    console.log(`OWNER=${owner}`);
+    console.log(`DEVICE=${currentDevice}`);
+    console.log(`SCOPE=${scope}`);
+  });
 }
 
-function removeLock(owner, scope) {
-  validateToken('owner', owner);
-  validateToken('scope', scope);
+function remove(owner, scope) {
+  if (!owner || !scope) {
+    throw new Error(
+      'Usage: lock:remove -- <owner> <scope>'
+    );
+  }
 
-  acquireWriteLock();
-  try {
-    const data = readLocks();
-    const beforeCount = data.locks.length;
-    data.locks = data.locks.filter((lock) => !(lock.owner === owner && lock.scope === scope));
+  const currentDevice = device();
 
-    if (data.locks.length === beforeCount) {
-      fail(`ERROR: No lock found for owner "${owner}" and scope "${scope}".`);
+  mutex(() => {
+    const local = readLocal();
+    const remote = remoteState();
+
+    const remoteMatches = remote.state.locks.filter(
+      (lock) =>
+        lock.owner === owner &&
+        lock.scope === scope &&
+        lock.device === currentDevice
+    );
+
+    if (remoteMatches.length > 0) {
+      writeRemote(
+        {
+          version: 2,
+          locks: remote.state.locks.filter(
+            (lock) =>
+              !(
+                lock.owner === owner &&
+                lock.scope === scope &&
+                lock.device === currentDevice
+              )
+          ),
+        },
+        remote.oid
+      );
     }
 
-    writeLocks(data);
-    console.log(`Released lock for ${owner}/${scope}`);
-  } finally {
-    releaseWriteLock();
+    const localMatches = local.locks.filter(
+      (lock) =>
+        lock.owner === owner &&
+        lock.scope === scope &&
+        (
+          lock.device === currentDevice ||
+          lock.device === 'legacy-local'
+        )
+    );
+
+    if (
+      remoteMatches.length === 0 &&
+      localMatches.length === 0
+    ) {
+      throw new Error(
+        `No owned lock for ${owner} / ${scope}`
+      );
+    }
+
+    writeLocal({
+      version: 2,
+      locks: local.locks.filter(
+        (lock) =>
+          !(
+            lock.owner === owner &&
+            lock.scope === scope &&
+            (
+              lock.device === currentDevice ||
+              lock.device === 'legacy-local'
+            )
+          )
+      ),
+    });
+
+    console.log('LOCK_RELEASED');
+    console.log(`OWNER=${owner}`);
+    console.log(`DEVICE=${currentDevice}`);
+    console.log(`SCOPE=${scope}`);
+  });
+}
+
+function status() {
+  const remote = remoteState({ allowMissing: true });
+
+  console.log(`REMOTE=${REMOTE}`);
+  console.log(`REMOTE_BRANCH=${BRANCH}`);
+  console.log(`REMOTE_EXISTS=${remote.exists ? 'YES' : 'NO'}`);
+
+  if (remote.exists) {
+    console.log(`REMOTE_OID=${remote.oid}`);
+    console.log(
+      `REMOTE_LOCK_COUNT=${remote.state.locks.length}`
+    );
   }
 }
+
+const [command, ...args] = process.argv.slice(2);
 
 try {
   switch (command) {
     case 'list':
-      listLocks();
+      list();
       break;
+
     case 'check':
-      if (args.length !== 1) {
-        printUsage();
-        process.exit(1);
-      }
-      checkPath(args[0]);
+      check(args);
       break;
-    case 'add':
-      addLock(args);
+
+    case 'add': {
+      const [owner, scope, ...paths] = args;
+      add(owner, scope, paths);
       break;
-    case 'remove':
-      if (args.length !== 2) {
-        printUsage();
-        process.exit(1);
-      }
-      removeLock(args[0], args[1]);
+    }
+
+    case 'remove': {
+      const [owner, scope] = args;
+      remove(owner, scope);
       break;
+    }
+
+    case 'device':
+      setDevice(args[0]);
+      break;
+
+    case 'remote:init':
+      initRemote();
+      break;
+
+    case 'remote:status':
+      status();
+      break;
+
     default:
-      printUsage();
-      process.exit(command ? 1 : 0);
+      throw new Error(`Unknown lock command: ${command || '(none)'}`);
   }
 } catch (error) {
-  if (error instanceof CliError) {
-    console.error(error.message);
-    process.exit(error.code);
-  }
-
-  throw error;
+  console.error(`ERROR: ${error.message}`);
+  process.exitCode = 1;
 }

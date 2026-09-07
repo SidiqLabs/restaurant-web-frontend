@@ -10,7 +10,10 @@
     "lock:list": "node scripts/work-locks.mjs list",
     "lock:check": "node scripts/work-locks.mjs check",
     "lock:add": "node scripts/work-locks.mjs add",
-    "lock:remove": "node scripts/work-locks.mjs remove"
+    "lock:remove": "node scripts/work-locks.mjs remove",
+    "lock:device": "node scripts/work-locks.mjs device",
+    "lock:remote:init": "node scripts/work-locks.mjs remote:init",
+    "lock:remote:status": "node scripts/work-locks.mjs remote:status"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
