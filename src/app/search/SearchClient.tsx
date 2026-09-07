@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { ShowMoreButton } from '@/components/common/ShowMoreButton';
+import { Toast } from '@/components/common/Toast';
+import { ToastViewport } from '@/components/common/ToastViewport';
 import { RestaurantList } from '@/components/resto/RestaurantList';
 import { useInfiniteSearchRestaurantsQuery } from '@/services/queries/restaurants';
 
@@ -12,6 +14,7 @@ type Props = {
 };
 
 export const SearchClient = ({ q }: Props) => {
+  const [isNoMoreToastOpen, setIsNoMoreToastOpen] = useState(false);
   const query = useInfiniteSearchRestaurantsQuery({ q, limit: 20 });
 
   const restaurants = useMemo(() => {
@@ -24,9 +27,24 @@ export const SearchClient = ({ q }: Props) => {
 
   const canShowMore = Boolean(query.hasNextPage);
   const isLoadingMore = query.isFetchingNextPage;
+  const isExhausted =
+    query.isSuccess &&
+    restaurants.length > 0 &&
+    query.hasNextPage === false &&
+    !isLoadingMore;
 
   return (
     <main className='mx-auto max-w-360 px-6 pb-12 pt-10 lg:px-16 xl:px-30'>
+      <ToastViewport>
+        <Toast
+          open={isNoMoreToastOpen}
+          variant='info'
+          title='Info'
+          description='No more restaurants to show.'
+          autoCloseMs={3000}
+          onClose={() => setIsNoMoreToastOpen(false)}
+        />
+      </ToastViewport>
       <div className='mb-6 flex items-start justify-between gap-4'>
         <div>
           <h1 className='text-2xl font-semibold text-foreground'>
@@ -70,13 +88,18 @@ export const SearchClient = ({ q }: Props) => {
         <>
           <RestaurantList restaurants={restaurants} />
 
-          <div className='mt-8 flex justify-center'>
-            <ShowMoreButton
-              canShowMore={canShowMore}
-              isLoadingMore={isLoadingMore}
-              onClickAction={() => query.fetchNextPage()}
-            />
-          </div>
+          {restaurants.length > 0 ? (
+            <div className='mt-8 flex justify-center'>
+              <ShowMoreButton
+                canShowMore={canShowMore}
+                isLoadingMore={isLoadingMore}
+                onClickAction={() => query.fetchNextPage()}
+                onUnavailableAction={
+                  isExhausted ? () => setIsNoMoreToastOpen(true) : undefined
+                }
+              />
+            </div>
+          ) : null}
         </>
       )}
     </main>
