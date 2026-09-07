@@ -41,8 +41,9 @@ const ITEM_BASE = cn(
   'cursor-pointer'
 );
 
-const ITEM_INACTIVE = 'text-foreground hover:bg-muted';
-const ITEM_ACTIVE = 'bg-accent text-primary font-semibold hover:bg-accent';
+const ITEM_INACTIVE = 'text-foreground hover:bg-nav-hover';
+const ITEM_ACTIVE =
+  'bg-nav-active text-nav-active-foreground font-semibold hover:bg-nav-active';
 const ICON_SLOT = cn(
   'grid h-5 w-5 shrink-0 place-items-center text-current',
   '[&>img]:h-5 [&>img]:w-5 [&>svg]:h-5 [&>svg]:w-5'

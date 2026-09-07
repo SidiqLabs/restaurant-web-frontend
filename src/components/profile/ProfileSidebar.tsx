@@ -133,8 +133,8 @@ export const ProfileSidebar = ({
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             'cursor-pointer',
             isProfileActive
-              ? 'bg-accent text-primary font-semibold hover:bg-accent'
-              : 'text-foreground hover:bg-muted'
+              ? 'bg-nav-active text-nav-active-foreground font-semibold hover:bg-nav-active'
+              : 'text-foreground hover:bg-nav-hover'
           )}
           aria-current={isProfileActive ? 'page' : undefined}
           aria-label='Open profile'

@@ -36,6 +36,9 @@
 
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-nav-active: var(--nav-active);
+  --color-nav-active-foreground: var(--nav-active-foreground);
+  --color-nav-hover: var(--nav-hover);
 
   --color-destructive: var(--destructive);
 
@@ -96,6 +99,25 @@
 
   --accent: var(--brand-100);
   --accent-foreground: var(--neutral-900);
+
+  /*
+   * Account navigation interaction semantics.
+   *
+   * Selected navigation intentionally derives from the primary brand color.
+   * Do not use generic `accent` for navigation selection because accent can
+   * serve unrelated component semantics.
+   */
+  --nav-active: color-mix(
+    in oklab,
+    var(--primary) 14%,
+    var(--background)
+  );
+  --nav-active-foreground: var(--primary);
+  --nav-hover: color-mix(
+    in oklab,
+    var(--primary) 6%,
+    var(--background)
+  );
 
   --destructive: var(--brand-400);
 
