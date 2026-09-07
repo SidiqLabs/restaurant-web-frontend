@@ -32,6 +32,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
 
   --color-muted: var(--muted);
+  --color-neutral-100: var(--neutral-100);
   --color-muted-foreground: var(--muted-foreground);
 
   --color-accent: var(--accent);
@@ -69,6 +70,7 @@
 
   --neutral-25: #fcfcfc;
   --neutral-50: #f9fafb;
+  --neutral-100: #f3f4f6;
   --neutral-200: #e5e7eb;
   --neutral-300: #d1d5db;
   --neutral-400: #9ca3af;
@@ -120,12 +122,8 @@
    * Functional exceptions such as success, warning and star
    * retain their own semantic colors.
    */
-  --interaction-hover: color-mix(
-    in oklab,
-    var(--brand-100) 55%,
-    var(--background)
-  );
-  --interaction-selected: var(--brand-100);
+  --interaction-hover: var(--neutral-50);
+  --interaction-selected: var(--neutral-100);
   --interaction-selected-foreground: var(--primary);
   --interaction-focus: var(--brand-300);
 
