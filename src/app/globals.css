@@ -97,7 +97,7 @@
   --accent: var(--brand-100);
   --accent-foreground: var(--neutral-900);
 
-  --destructive: #dc2626;
+  --destructive: var(--brand-400);
 
   /*  Semantic status colors (light theme) */
   --success: #16a34a;
