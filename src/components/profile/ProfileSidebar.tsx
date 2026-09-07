@@ -85,17 +85,6 @@ export const ProfileSidebar = ({
     const deliveryIcon = (
       <MarkerPinIcon className='h-5 w-5' aria-hidden />
     );
-
-    const deliveryEndAdornment = hasLocation ? (
-      <MarkerPinIcon
-        className={cn(
-          'h-[18px] w-[18px]',
-          isDeliveryActive ? 'text-primary' : 'text-muted-foreground'
-        )}
-        aria-hidden
-      />
-    ) : null;
-
     return [
       {
         key: 'delivery',
@@ -103,7 +92,6 @@ export const ProfileSidebar = ({
         icon: deliveryIcon,
         onClick: setFocusDelivery,
         isActive: isDeliveryActive,
-        endAdornment: deliveryEndAdornment,
       },
       {
         key: 'orders',
