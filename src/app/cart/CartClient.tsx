@@ -7,6 +7,7 @@ import { Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import CartErrorState from '@/components/cart/CartErrorState';
+import SelectionCheckbox from '@/components/common/SelectionCheckbox';
 import CartItemRow from '@/components/cart/CartItemRow';
 import { Button } from '@/components/ui/button';
 import {
@@ -333,20 +334,15 @@ const CartClient = () => {
         </div>
 
         <div className='mt-4 flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-3'>
-          <label className='inline-flex cursor-pointer items-center gap-3 text-sm font-medium'>
-            <input
-              type='checkbox'
+          <div className='inline-flex items-center gap-3 text-sm font-medium'>
+            <SelectionCheckbox
               checked={isAllSelected}
-              ref={(node) => {
-                if (node) {
-                  node.indeterminate = isSelectAllIndeterminate;
-                }
-              }}
-              onChange={(event) => setAllSelected(event.target.checked)}
-              className='h-5 w-5 cursor-pointer accent-primary'
+              indeterminate={isSelectAllIndeterminate}
+              onCheckedChange={setAllSelected}
+              ariaLabel='Select all cart items'
             />
             <span>Select All</span>
-          </label>
+          </div>
 
           <span className='text-sm text-muted-foreground'>
             {selectionSummary.selectedLines} selected
@@ -471,30 +467,25 @@ const CartClient = () => {
               {/* Restaurant header row (Figma: chevron sticks to title) */}
               <div className='flex items-center'>
                 <div className='flex min-w-0 items-center gap-3'>
-                  <input
-                    type='checkbox'
+                  <SelectionCheckbox
                     checked={group.items.every((item) =>
                       effectiveSelectedItemIds.has(item.id)
                     )}
-                    ref={(node) => {
-                      if (!node) return;
-
-                      const selectedCount = group.items.filter((item) =>
+                    indeterminate={
+                      group.items.some((item) =>
                         effectiveSelectedItemIds.has(item.id)
-                      ).length;
-
-                      node.indeterminate =
-                        selectedCount > 0 &&
-                        selectedCount < group.items.length;
-                    }}
-                    onChange={(event) =>
-                      setRestaurantSelected(
-                        group.items.map((item) => item.id),
-                        event.target.checked
+                      ) &&
+                      !group.items.every((item) =>
+                        effectiveSelectedItemIds.has(item.id)
                       )
                     }
-                    aria-label={`Select all items from ${group.restaurant.name}`}
-                    className='h-5 w-5 shrink-0 cursor-pointer accent-primary'
+                    onCheckedChange={(selected) =>
+                      setRestaurantSelected(
+                        group.items.map((item) => item.id),
+                        selected
+                      )
+                    }
+                    ariaLabel={`Select all items from ${group.restaurant.name}`}
                   />
 
                   {/* Restaurant icon */}

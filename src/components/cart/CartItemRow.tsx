@@ -1,5 +1,7 @@
 import Image from 'next/image';
 
+import SelectionCheckbox from '@/components/common/SelectionCheckbox';
+
 import {
   QTY_ICON_ADD,
   QTY_ICON_MINUS,
@@ -44,13 +46,11 @@ const CartItemRow = ({
         'focus-within:bg-muted/40'
       )}
     >
-      <input
-        type='checkbox'
+      <SelectionCheckbox
         checked={selected}
         disabled={disabled}
-        onChange={(event) => onSelectedChange(event.target.checked)}
-        aria-label={`Select ${item.menu.foodName} for checkout`}
-        className='h-5 w-5 shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-60'
+        onCheckedChange={onSelectedChange}
+        ariaLabel={`Select ${item.menu.foodName} for checkout`}
       />
 
       <Image
