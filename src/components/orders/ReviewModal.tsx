@@ -34,7 +34,7 @@ type ReviewModalProps = {
   restaurantName?: string;
   menuIds: number[];
 
-  // if exists => edit mode
+  // if exists => open in read-only view mode first
   existingReview?: MyReviewItem | null;
   remainingReviewCount?: number;
   onReviewSubmitted?: () => void;
@@ -48,6 +48,8 @@ type SubmittedReview = {
   star: number;
   comment: string;
 };
+
+type ReviewModalMode = 'create' | 'view' | 'edit';
 
 const clampStar = (v: number) => Math.max(0, Math.min(5, v));
 
@@ -129,11 +131,14 @@ const ReviewModal = ({
   onReviewNext,
 }: ReviewModalProps) => {
   const router = useRouter();
-  const isEditMode = Boolean(existingReview?.id);
+  const hasExistingReview = Boolean(existingReview?.id);
 
   // IMPORTANT:
   // Modal is expected to be remounted via key in parent when opening,
   // so initializers are safe and avoid "setState in effect" lint drama.
+  const [modalMode, setModalMode] = useState<ReviewModalMode>(() =>
+    hasExistingReview ? 'view' : 'create'
+  );
   const [selectedStar, setSelectedStar] = useState<number>(
     existingReview?.star ?? 0
   );
@@ -142,6 +147,9 @@ const ReviewModal = ({
   const [localError, setLocalError] = useState<string>('');
   const [submittedReview, setSubmittedReview] =
     useState<SubmittedReview | null>(null);
+  const [updatedReview, setUpdatedReview] = useState<SubmittedReview | null>(
+    null
+  );
 
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -169,14 +177,29 @@ const ReviewModal = ({
     };
   }, [existingReview, restaurantId, restaurantName]);
 
-  const reviewResult = submittedReview ?? existingReviewResult;
+  const reviewResult = submittedReview ?? updatedReview ?? existingReviewResult;
+  const isCreateMode = modalMode === 'create';
+  const isEditMode = modalMode === 'edit';
+  const isViewMode = modalMode === 'view' && Boolean(reviewResult);
 
   const canSubmit = useMemo(() => {
+    const isFormMode = isCreateMode || isEditMode;
     const hasStar = selectedStar >= 1 && selectedStar <= 5;
     const hasComment = comment.trim().length > 0;
-    const hasMenus = Array.isArray(menuIds) && menuIds.length > 0;
-    return hasStar && hasComment && hasMenus && !isSubmitting;
-  }, [selectedStar, comment, menuIds, isSubmitting]);
+    const hasTarget = isEditMode
+      ? Boolean(existingReview?.id)
+      : Array.isArray(menuIds) && menuIds.length > 0;
+
+    return isFormMode && hasStar && hasComment && hasTarget && !isSubmitting;
+  }, [
+    comment,
+    existingReview?.id,
+    isCreateMode,
+    isEditMode,
+    isSubmitting,
+    menuIds,
+    selectedStar,
+  ]);
 
   const safeClose = useCallback(() => {
     if (isSubmitting) return;
@@ -238,6 +261,32 @@ const ReviewModal = ({
 
   const setHover = (value: number) => setHoverStar(clampStar(value));
 
+  const restoreDraftFromReview = (review: SubmittedReview | null) => {
+    if (!review) return;
+
+    setSelectedStar(clampStar(review.star));
+    setHoverStar(0);
+    setComment(review.comment);
+    setLocalError('');
+  };
+
+  const handleStartEdit = () => {
+    if (!reviewResult) return;
+
+    restoreDraftFromReview(reviewResult);
+    setModalMode('edit');
+  };
+
+  const handleCancel = () => {
+    if (isEditMode) {
+      restoreDraftFromReview(reviewResult);
+      setModalMode('view');
+      return;
+    }
+
+    safeClose();
+  };
+
   const handleViewReview = () => {
     if (!reviewResult) return;
 
@@ -259,18 +308,38 @@ const ReviewModal = ({
       return;
     }
 
-    if (!menuIds.length) {
+    if (isCreateMode && !menuIds.length) {
       setLocalError('No menu items found for this transaction.');
       return;
     }
 
     try {
       if (isEditMode && existingReview?.id) {
-        await updateReview.mutateAsync({
+        const res = await updateReview.mutateAsync({
           id: existingReview.id,
           payload: { star: selectedStar, comment: trimmed },
         });
-        onClose();
+
+        const review = res.data.review;
+        const nextReview: SubmittedReview = {
+          id: review.id,
+          restaurantId:
+            review.restaurant?.id ??
+            existingReviewResult?.restaurantId ??
+            restaurantId,
+          restaurantName:
+            review.restaurant?.name ??
+            existingReviewResult?.restaurantName ??
+            restaurantName ??
+            'Restaurant',
+          star: review.star ?? selectedStar,
+          comment: review.comment ?? trimmed,
+        };
+
+        setSubmittedReview(null);
+        setUpdatedReview(nextReview);
+        restoreDraftFromReview(nextReview);
+        setModalMode('view');
         return;
       }
 
@@ -319,7 +388,7 @@ const ReviewModal = ({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-center justify-center px-4',
+        'fixed inset-0 z-50 flex items-center justify-center p-4',
         'bg-foreground/40'
       )}
       role='dialog'
@@ -327,9 +396,11 @@ const ReviewModal = ({
       aria-label={
         submittedReview
           ? 'Review Submitted'
-          : isEditMode
+          : isViewMode
             ? 'Existing Review'
-            : 'Write a Review'
+            : isEditMode
+              ? 'Edit Review'
+              : 'Write a Review'
       }
       onMouseDown={handleOverlayMouseDown}
     >
@@ -337,7 +408,7 @@ const ReviewModal = ({
         ref={dialogRef}
         className={cn(
           'w-full max-w-md rounded-2xl border bg-card p-5 shadow-sm sm:p-6',
-          'max-h-[calc(100vh-32px)] overflow-y-auto outline-none'
+          'max-h-[calc(100dvh-32px)] overflow-y-auto outline-none'
         )}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -347,12 +418,14 @@ const ReviewModal = ({
             <div className='text-lg font-semibold text-foreground'>
               {submittedReview
                 ? 'Review Submitted'
-                : isEditMode
+                : isViewMode
                   ? 'Existing Review'
-                  : 'Give Review'}
+                  : isEditMode
+                    ? 'Edit Review'
+                    : 'Give Review'}
             </div>
-            {restaurantName && !submittedReview ? (
-              <p className='mt-1 truncate text-sm text-muted-foreground'>
+            {restaurantName && !submittedReview && !isViewMode ? (
+              <p className='mt-1 break-words text-sm text-muted-foreground'>
                 {restaurantName}
               </p>
             ) : null}
@@ -446,23 +519,62 @@ const ReviewModal = ({
               ) : null}
             </div>
           </div>
-        ) : (
-          <>
-            {existingReviewResult ? (
-              <div className='mt-5 space-y-3'>
-                <ReviewResultCard review={existingReviewResult} />
+        ) : isViewMode && reviewResult ? (
+          <div className='mt-5 space-y-5'>
+            <ReviewResultCard review={reviewResult} />
 
-                <div className='rounded-2xl border bg-background p-4 text-center text-sm'>
-                  <p className='font-medium text-foreground'>
-                    You have already reviewed this order.
-                  </p>
-                  <p className='mt-1 text-muted-foreground'>
-                    You can update your existing review instead.
-                  </p>
-                </div>
-              </div>
+            {localError ? (
+              <p className='text-sm text-destructive' aria-live='polite'>
+                {localError}
+              </p>
             ) : null}
 
+            <div className='flex flex-col gap-3'>
+              <button
+                type='button'
+                onClick={handleStartEdit}
+                disabled={isSubmitting}
+                className={cn(
+                  'h-12 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground',
+                  'hover:opacity-90 active:opacity-95',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  isSubmitting ? 'opacity-60' : ''
+                )}
+              >
+                Edit Review
+              </button>
+
+              <button
+                type='button'
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className={cn(
+                  'h-12 w-full rounded-full border border-destructive/30 bg-background text-sm font-semibold text-destructive',
+                  'hover:bg-destructive/10',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  isSubmitting ? 'opacity-60' : ''
+                )}
+              >
+                Delete Review
+              </button>
+
+              <button
+                type='button'
+                onClick={safeClose}
+                disabled={isSubmitting}
+                className={cn(
+                  'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
+                  'hover:bg-muted',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  isSubmitting ? 'opacity-60' : ''
+                )}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
             {/* Rating */}
             <div className='mt-5 text-center'>
               <div className='text-sm font-semibold text-foreground'>
@@ -549,41 +661,9 @@ const ReviewModal = ({
                     : 'Send'}
               </button>
 
-              {isEditMode && reviewResult ? (
-                <button
-                  type='button'
-                  onClick={handleViewReview}
-                  disabled={isSubmitting}
-                  className={cn(
-                    'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
-                    'hover:bg-muted',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                    isSubmitting ? 'opacity-60' : ''
-                  )}
-                >
-                  View Review
-                </button>
-              ) : null}
-
-              {isEditMode ? (
-                <button
-                  type='button'
-                  onClick={handleDelete}
-                  disabled={isSubmitting}
-                  className={cn(
-                    'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
-                    'hover:bg-muted',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                    isSubmitting ? 'opacity-60' : ''
-                  )}
-                >
-                  Delete Review
-                </button>
-              ) : null}
-
               <button
                 type='button'
-                onClick={safeClose}
+                onClick={handleCancel}
                 disabled={isSubmitting}
                 className={cn(
                   'h-12 w-full rounded-full border bg-background text-sm font-semibold text-foreground',
