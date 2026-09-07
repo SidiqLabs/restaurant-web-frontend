@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import CartErrorState from '@/components/cart/CartErrorState';
 import CartItemRow from '@/components/cart/CartItemRow';
@@ -50,26 +50,10 @@ const CartClient = () => {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [serverError, setServerError] = useState<string>('');
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
-
-  // UI-only: reveal actions for the selected item (pixel match figma by default)
-  const [activeItemId, setActiveItemId] = useState<number | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-
-      const root = rootRef.current;
-      if (!root) return;
-
-      // click outside cart area closes action reveal
-      if (!root.contains(target)) setActiveItemId(null);
-    };
-
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, []);
+  const [removeTarget, setRemoveTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const isEmpty = useMemo(() => {
     return (
@@ -113,13 +97,14 @@ const CartClient = () => {
 
     try {
       await deleteItem.mutateAsync({ id: cartItemId });
+      setRemoveTarget(null);
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : 'Failed to remove item.'
       );
+      setRemoveTarget(null);
     } finally {
       setPendingDeleteId(null);
-      setActiveItemId((prev) => (prev === cartItemId ? null : prev));
     }
   };
 
@@ -139,6 +124,11 @@ const CartClient = () => {
   const handleClearDialogOpenChange = (open: boolean) => {
     if (clearCart.isPending) return;
     setIsClearConfirmOpen(open);
+  };
+
+  const handleRemoveDialogOpenChange = (open: boolean) => {
+    if (deleteItem.isPending) return;
+    if (!open) setRemoveTarget(null);
   };
 
   if (isLoading) {
@@ -215,7 +205,7 @@ const CartClient = () => {
 
   return (
     <section className={PAGE_BG}>
-      <div ref={rootRef} className={PAGE_CONTAINER}>
+      <div className={PAGE_CONTAINER}>
         {/* Page header */}
         <div className='flex items-center justify-between gap-4'>
           <h1 className='text-2xl font-semibold tracking-tight'>My Cart</h1>
@@ -285,6 +275,58 @@ const CartClient = () => {
           </DialogContent>
         </Dialog>
 
+        <Dialog
+          open={Boolean(removeTarget)}
+          onOpenChange={handleRemoveDialogOpenChange}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <div className='min-w-0'>
+                <DialogTitle className='text-lg font-semibold text-foreground'>
+                  Remove this item?
+                </DialogTitle>
+                <DialogDescription className='mt-1 text-sm leading-6 text-muted-foreground'>
+                  This item has a quantity of 1. Removing it will delete it from
+                  your cart.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+
+            <DialogBody>
+              <p className='break-words text-sm leading-6 text-muted-foreground'>
+                {removeTarget
+                  ? `Are you sure you want to remove ${removeTarget.name}?`
+                  : 'Are you sure you want to remove this item?'}
+              </p>
+            </DialogBody>
+
+            <DialogFooter className='flex-col-reverse sm:flex-row'>
+              <Button
+                type='button'
+                variant='neutral'
+                className='w-full rounded-full sm:w-auto'
+                onClick={() => setRemoveTarget(null)}
+                disabled={deleteItem.isPending}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type='button'
+                variant='destructive'
+                className='w-full rounded-full sm:w-auto'
+                onClick={() => {
+                  if (!removeTarget) return;
+                  void handleRemove(removeTarget.id);
+                }}
+                disabled={!removeTarget || deleteItem.isPending}
+              >
+                {deleteItem.isPending ? 'Removing...' : 'Remove'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Server error banner (visual only) */}
         {serverError ? (
           <div className='mt-5 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3'>
@@ -348,17 +390,21 @@ const CartClient = () => {
                       <CartItemRow
                         item={item}
                         disabled={disabled}
-                        isActive={activeItemId === item.id}
-                        onActivate={() => setActiveItemId(item.id)}
-                        onDecrease={() =>
-                          handleDecrease(item.id, item.quantity - 1)
-                        }
-                        onIncrease={() =>
-                          handleIncrease(item.id, item.quantity + 1)
-                        }
-                        onRemove={() => handleRemove(item.id)}
+                        onDecrease={() => {
+                          if (item.quantity === 1) {
+                            setRemoveTarget({
+                              id: item.id,
+                              name: item.menu.foodName,
+                            });
+                            return;
+                          }
+
+                          void handleDecrease(item.id, item.quantity - 1);
+                        }}
+                        onIncrease={() => {
+                          void handleIncrease(item.id, item.quantity + 1);
+                        }}
                         isUpdating={isUpdatingThis}
-                        isDeleting={isDeletingThis}
                       />
                     </li>
                   );

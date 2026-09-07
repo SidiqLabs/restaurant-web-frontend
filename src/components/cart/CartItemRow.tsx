@@ -11,16 +11,12 @@ import type { CartItem } from '@/types/cart';
 type CartItemRowProps = {
   item: CartItem;
   disabled?: boolean;
-  isActive?: boolean;
-  onActivate?: () => void;
 
   onDecrease: () => void;
   onIncrease: () => void;
-  onRemove: () => void;
 
   // UI-only (optional): show subtle pending indicator on buttons
   isUpdating?: boolean;
-  isDeleting?: boolean;
 };
 
 const QTY_BTN_BASE =
@@ -31,29 +27,18 @@ const QTY_BTN_FOCUS =
 const CartItemRow = ({
   item,
   disabled = false,
-  isActive = false,
-  onActivate,
   onDecrease,
   onIncrease,
-  onRemove,
   isUpdating = false,
-  isDeleting = false,
 }: CartItemRowProps) => {
-  const canDecrease = item.quantity > 1;
 
   return (
     <div
       className={cn(
-        'group relative flex items-center gap-2 rounded-2xl px-2 py-3 sm:gap-3 sm:px-3',
+        'relative flex items-center gap-2 rounded-2xl px-2 py-3 sm:gap-3 sm:px-3',
         'hover:bg-muted/40',
-        'focus-within:bg-muted/40',
-        isActive ? 'bg-muted/40' : ''
+        'focus-within:bg-muted/40'
       )}
-      onClick={onActivate}
-      onFocus={onActivate}
-      tabIndex={0}
-      role='group'
-      aria-label={`${item.menu.foodName} item`}
     >
       <Image
         src={item.menu.image}
@@ -80,7 +65,7 @@ const CartItemRow = ({
             e.stopPropagation();
             onDecrease();
           }}
-          disabled={disabled || !canDecrease}
+          disabled={disabled}
           className={cn(
             QTY_BTN_BASE,
             'border bg-card hover:bg-muted disabled:opacity-60',
@@ -140,49 +125,7 @@ const CartItemRow = ({
         {formatCurrencyIDR(item.itemTotal)}
       </div>
 
-      {/* Remove action (hidden by default = pixel match) */}
-      <button
-        type='button'
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        disabled={disabled}
-        className={cn(
-          'ml-0 inline-flex h-8 items-center justify-center overflow-hidden rounded-full border bg-card text-muted-foreground sm:ml-1 sm:w-8',
-          'hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5',
-          QTY_BTN_FOCUS,
-          // default hidden, revealed when active or focus-within
-          isActive
-            ? 'w-8 opacity-100'
-            : 'w-0 border-0 opacity-0 sm:w-8 sm:border',
-          'transition-opacity'
-        )}
-        aria-label='Remove item'
-        aria-hidden={!isActive}
-        tabIndex={isActive ? 0 : -1}
-        title={isDeleting ? 'Removing...' : 'Remove'}
-      >
-        {isDeleting ? (
-          <span className='text-xs font-semibold'></span>
-        ) : (
-          <svg
-            width='16'
-            height='16'
-            viewBox='0 0 24 24'
-            fill='none'
-            aria-hidden='true'
-          >
-            <path
-              d='M9 3h6m-9 4h12m-1 0-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7m3 4v8m6-8v8'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            />
-          </svg>
-        )}
-      </button>
+
     </div>
   );
 };
