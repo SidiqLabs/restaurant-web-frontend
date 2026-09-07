@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -142,6 +143,14 @@ export default function CategoryClient({ slug }: Props) {
   const closeFilter = () => setIsFilterOpen(false);
   const openFilter = () => setIsFilterOpen(true);
 
+  const hasActiveFilters =
+    filters.searchQuery.trim() !== '' ||
+    filters.sortBy !== 'rating-desc' ||
+    filters.range !== null ||
+    filters.priceMin !== null ||
+    filters.priceMax !== null ||
+    filters.ratingMin !== null;
+
   // ==== UI BELOW THIS LINE: keep as-is (layout locked) ====
 
   if (isUnsupported || !isSupported) {
@@ -199,18 +208,34 @@ export default function CategoryClient({ slug }: Props) {
 
   return (
     <div className='mx-auto w-full max-w-6xl px-4 py-10'>
-      <div className='mb-6 flex items-center justify-between gap-4'>
+      <div className='mb-6 md:flex md:items-center md:justify-between md:gap-4'>
         <h1 className='text-2xl font-semibold text-foreground'>{pageTitle}</h1>
 
-        <div className='flex items-center gap-3'>
+        <div className='mt-3 flex w-full items-center gap-2 md:mt-0 md:w-auto md:gap-3'>
           <button
             type='button'
             onClick={openFilter}
-            className='inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden'
+            className='inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden'
             aria-label='Open filters'
           >
-            Filter
+            <SlidersHorizontal className='h-4 w-4' aria-hidden='true' />
+            <span>Filter</span>
           </button>
+
+          {hasActiveFilters ? (
+            <button
+              type='button'
+              onClick={() => {
+                dispatch(resetFilters());
+                closeFilter();
+              }}
+              className='inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden'
+              aria-label='Reset filters'
+            >
+              <RotateCcw className='h-4 w-4' aria-hidden='true' />
+              <span>Reset</span>
+            </button>
+          ) : null}
 
           <button
             type='button'
@@ -218,7 +243,7 @@ export default function CategoryClient({ slug }: Props) {
               dispatch(resetFilters());
               closeFilter();
             }}
-            className='rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+            className='hidden rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:inline-flex'
           >
             Reset Filters
           </button>
@@ -403,7 +428,7 @@ const MobileFilterDrawer = ({
         type='button'
         aria-label='Close filters overlay'
         onClick={onClose}
-        className='absolute inset-0 bg-foreground/20'
+        className='absolute inset-0 bg-foreground/40 backdrop-blur-[1px]'
       />
       <div className='absolute right-0 top-0 h-full w-[88%] max-w-[360px] overflow-y-auto border-l border-border bg-card p-4 shadow-lg'>
         <div className='mb-4 flex items-center justify-between gap-3'>
@@ -411,10 +436,10 @@ const MobileFilterDrawer = ({
           <button
             type='button'
             onClick={onClose}
-            className='inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+            className='inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
             aria-label='Close filters'
           >
-            
+            <X className='h-5 w-5' aria-hidden='true' />
           </button>
         </div>
         {children}
