@@ -4,6 +4,7 @@
 import Image from 'next/image';
 import * as React from 'react';
 
+import { ProfilePhotoPreviewDialog } from '@/components/profile/ProfilePhotoPreviewDialog';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { ProfileInfoRow } from '@/components/profile/ProfileInfoRow';
 import { Button } from '@/components/ui/button';
@@ -49,21 +50,37 @@ export const ProfileMainCard = ({
         {!isEditing ? (
           <>
             <div className='grid grid-cols-[48px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[56px_minmax(0,1fr)] sm:gap-4'>
-              <div className='relative h-12 w-12 overflow-hidden sm:h-14 sm:w-14 rounded-full bg-muted'>
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt='User avatar'
-                    fill
-                    sizes='(min-width: 640px) 56px, 48px'
-                    className='object-cover'
-                  />
-                ) : (
+              {avatarUrl ? (
+                <ProfilePhotoPreviewDialog
+                  src={avatarUrl}
+                  alt={`${displayName} profile photo`}
+                >
+                  <button
+                    type='button'
+                    className={cn(
+                      'relative h-12 w-12 overflow-hidden rounded-full bg-muted sm:h-14 sm:w-14',
+                      'cursor-pointer transition-opacity hover:opacity-90',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                    )}
+                    aria-label='Preview profile photo'
+                  >
+                    <Image
+                      src={avatarUrl}
+                      alt=''
+                      aria-hidden='true'
+                      fill
+                      sizes='(min-width: 640px) 56px, 48px'
+                      className='object-cover'
+                    />
+                  </button>
+                </ProfilePhotoPreviewDialog>
+              ) : (
+                <div className='relative h-12 w-12 overflow-hidden rounded-full bg-muted sm:h-14 sm:w-14'>
                   <div className='grid h-full w-full place-items-center text-sm font-semibold text-muted-foreground'>
                     {getInitial(displayName)}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className='min-w-0'>
                 <ProfileInfoRow label='Name' value={displayName} />

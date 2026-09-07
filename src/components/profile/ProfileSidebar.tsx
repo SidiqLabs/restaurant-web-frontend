@@ -15,6 +15,7 @@ import {
 import { ArrowCircleIcon } from '@/components/icons/ArrowCircleIcon';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { MarkerPinIcon } from '@/components/icons/MarkerPinIcon';
+import { ProfilePhotoPreviewDialog } from '@/components/profile/ProfilePhotoPreviewDialog';
 import { cn } from '@/lib/utils';
 import { authTokenStorage } from '@/services/api/axios';
 import { authQueryKeys } from '@/services/queries/auth';
@@ -114,41 +115,60 @@ export const ProfileSidebar = ({
     <aside className='w-full'>
       <div className='rounded-2xl border border-border bg-card p-6 shadow-sm'>
         {/* Profile navigation */}
-        <Link
-          href='/profile'
+        <div
           className={cn(
             'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium leading-5 transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            'cursor-pointer',
             isProfileActive
               ? 'bg-nav-active text-nav-active-foreground font-semibold hover:bg-nav-active'
               : 'text-foreground hover:bg-nav-hover'
           )}
-          aria-current={isProfileActive ? 'page' : undefined}
-          aria-label='Open profile'
         >
-          <div className='relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted'>
-            {avatarUrl ? (
-              <Image
-                src={avatarUrl}
-                alt='User avatar'
-                fill
-                sizes='40px'
-                className='object-cover'
-              />
-            ) : (
+          {avatarUrl ? (
+            <ProfilePhotoPreviewDialog
+              src={avatarUrl}
+              alt={`${displayName} profile photo`}
+            >
+              <button
+                type='button'
+                className={cn(
+                  'relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted',
+                  'cursor-pointer transition-opacity hover:opacity-90',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                )}
+                aria-label='Preview profile photo'
+              >
+                <Image
+                  src={avatarUrl}
+                  alt=''
+                  aria-hidden='true'
+                  fill
+                  sizes='40px'
+                  className='object-cover'
+                />
+              </button>
+            </ProfilePhotoPreviewDialog>
+          ) : (
+            <div className='relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted'>
               <div className='grid h-full w-full place-items-center text-sm font-semibold text-muted-foreground'>
                 {getInitial(displayName)}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className='min-w-0 flex-1'>
+          <Link
+            href='/profile'
+            className={cn(
+              'min-w-0 flex-1 rounded-md text-current',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+            )}
+            aria-current={isProfileActive ? 'page' : undefined}
+            aria-label='Open profile'
+          >
             <p className='truncate text-sm font-semibold text-current'>
               {displayName}
             </p>
-          </div>
-        </Link>
+          </Link>
+        </div>
 
         {/* Navigation (shared) */}
         <AccountSidebarNav items={items} />
