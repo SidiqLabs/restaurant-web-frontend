@@ -39,6 +39,10 @@
   --color-nav-active: var(--nav-active);
   --color-nav-active-foreground: var(--nav-active-foreground);
   --color-nav-hover: var(--nav-hover);
+  --color-interaction-hover: var(--interaction-hover);
+  --color-interaction-selected: var(--interaction-selected);
+  --color-interaction-selected-foreground: var(--interaction-selected-foreground);
+  --color-interaction-focus: var(--interaction-focus);
 
   --color-destructive: var(--destructive);
 
@@ -107,17 +111,27 @@
    * Do not use generic `accent` for navigation selection because accent can
    * serve unrelated component semantics.
    */
-  --nav-active: color-mix(
+  /*
+   * Global interaction color constitution
+   *
+   * Core interaction states must remain inside the Foody
+   * red + white + neutral visual language.
+   *
+   * Functional exceptions such as success, warning and star
+   * retain their own semantic colors.
+   */
+  --interaction-hover: color-mix(
     in oklab,
-    var(--primary) 14%,
+    var(--brand-100) 55%,
     var(--background)
   );
-  --nav-active-foreground: var(--primary);
-  --nav-hover: color-mix(
-    in oklab,
-    var(--primary) 6%,
-    var(--background)
-  );
+  --interaction-selected: var(--brand-100);
+  --interaction-selected-foreground: var(--primary);
+  --interaction-focus: var(--brand-300);
+
+  --nav-active: var(--interaction-selected);
+  --nav-active-foreground: var(--interaction-selected-foreground);
+  --nav-hover: var(--interaction-hover);
 
   --destructive: var(--brand-400);
 
@@ -133,7 +147,7 @@
 
   --border: var(--neutral-200);
   --input: var(--neutral-200);
-  --ring: var(--brand-300);
+  --ring: var(--interaction-focus);
 }
 
 /* -------------------------------------------------------
