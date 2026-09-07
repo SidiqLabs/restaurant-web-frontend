@@ -11,6 +11,8 @@ import type { CartItem } from '@/types/cart';
 type CartItemRowProps = {
   item: CartItem;
   disabled?: boolean;
+  selected: boolean;
+  onSelectedChange: (selected: boolean) => void;
 
   onDecrease: () => void;
   onIncrease: () => void;
@@ -27,6 +29,8 @@ const QTY_BTN_FOCUS =
 const CartItemRow = ({
   item,
   disabled = false,
+  selected,
+  onSelectedChange,
   onDecrease,
   onIncrease,
   isUpdating = false,
@@ -40,6 +44,15 @@ const CartItemRow = ({
         'focus-within:bg-muted/40'
       )}
     >
+      <input
+        type='checkbox'
+        checked={selected}
+        disabled={disabled}
+        onChange={(event) => onSelectedChange(event.target.checked)}
+        aria-label={`Select ${item.menu.foodName} for checkout`}
+        className='h-5 w-5 shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-60'
+      />
+
       <Image
         src={item.menu.image}
         alt={item.menu.foodName}

@@ -51,11 +51,17 @@ export const ordersQueryHelpers = {
   },
 };
 
+type CheckoutMutationVariables = {
+  payload: CheckoutRequest;
+  purchasedCartItemIds: number[];
+  clearEntireCart: boolean;
+};
+
 export const useCheckoutMutation = () => {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: CheckoutRequest) => {
+    mutationFn: async ({ payload }: CheckoutMutationVariables) => {
       const res = await api.post<ApiResponse<CheckoutResponse['data']>>(
         '/api/order/checkout',
         payload
@@ -76,7 +82,7 @@ export const useCheckoutMutation = () => {
       return normalized;
     },
 
-    onSuccess: async (res) => {
+    onSuccess: async (res, vars) => {
       if (typeof window !== 'undefined') {
         try {
           window.sessionStorage.setItem(
@@ -89,12 +95,22 @@ export const useCheckoutMutation = () => {
       }
 
       try {
-        await api.delete('/api/cart');
+        if (vars.clearEntireCart) {
+          await api.delete('/api/cart');
+        } else {
+          await Promise.all(
+            vars.purchasedCartItemIds.map((id) =>
+              api.delete(`/api/cart/${id}`)
+            )
+          );
+        }
       } catch {
         // ignore
       }
 
-      qc.setQueryData(cartQueryKeys.all, EMPTY_CART);
+      if (vars.clearEntireCart) {
+        qc.setQueryData(cartQueryKeys.all, EMPTY_CART);
+      }
       qc.invalidateQueries({ queryKey: cartQueryKeys.all });
 
       // refresh orders cache (any status/page)

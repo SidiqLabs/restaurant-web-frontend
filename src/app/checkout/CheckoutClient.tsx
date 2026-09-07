@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
@@ -96,6 +96,19 @@ const TOAST_ICON_DANGER = '/assets/icons/danger.svg';
 
 const CheckoutClient = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedItemsParam = searchParams.get('items');
+
+  const requestedItemIds = useMemo(() => {
+    if (!selectedItemsParam) return null;
+
+    const ids = selectedItemsParam
+      .split(',')
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0);
+
+    return new Set(ids);
+  }, [selectedItemsParam]);
 
   const { data: profileRes } = useProfileQuery();
   const profile = profileRes?.data;
@@ -106,6 +119,54 @@ const CheckoutClient = () => {
     isError: isCartError,
     error: cartError,
   } = useCartQuery();
+
+  const selectedCartData = useMemo(() => {
+    if (!cartData) return undefined;
+    if (requestedItemIds === null) return cartData;
+
+    const cart = cartData.cart
+      .map((group) => {
+        const items = group.items.filter((item) =>
+          requestedItemIds.has(item.id)
+        );
+
+        return {
+          ...group,
+          items,
+          subtotal: items.reduce(
+            (total, item) => total + item.itemTotal,
+            0
+          ),
+        };
+      })
+      .filter((group) => group.items.length > 0);
+
+    const totalItems = cart.reduce(
+      (total, group) =>
+        total +
+        group.items.reduce(
+          (quantity, item) => quantity + item.quantity,
+          0
+        ),
+      0
+    );
+
+    const totalPrice = cart.reduce(
+      (total, group) => total + group.subtotal,
+      0
+    );
+
+    return {
+      ...cartData,
+      cart,
+      summary: {
+        ...cartData.summary,
+        restaurantCount: cart.length,
+        totalItems,
+        totalPrice,
+      },
+    };
+  }, [cartData, requestedItemIds]);
 
   const updateQty = useUpdateCartItemMutation();
   const deleteItem = useDeleteCartItemMutation();
@@ -146,13 +207,13 @@ const CheckoutClient = () => {
   const clearServerError = () => setServerError('');
 
   const isCartEmpty = useMemo(() => {
-    const totalItems = cartData?.summary.totalItems ?? 0;
-    const groups = cartData?.cart ?? [];
+    const totalItems = selectedCartData?.summary.totalItems ?? 0;
+    const groups = selectedCartData?.cart ?? [];
     return totalItems <= 0 || groups.length === 0;
-  }, [cartData]);
+  }, [selectedCartData]);
 
   const summary = useMemo(() => {
-    const subtotal = cartData?.summary.totalPrice ?? 0;
+    const subtotal = selectedCartData?.summary.totalPrice ?? 0;
 
     // UI-only fees (backend returns real pricing after success)
     const deliveryFee = subtotal > 0 ? 10_000 : 0;
@@ -163,9 +224,9 @@ const CheckoutClient = () => {
       deliveryFee,
       serviceFee,
       totalPrice: subtotal + deliveryFee + serviceFee,
-      totalItems: cartData?.summary.totalItems ?? 0,
+      totalItems: selectedCartData?.summary.totalItems ?? 0,
     };
-  }, [cartData]);
+  }, [selectedCartData]);
 
   const setField = <K extends keyof CheckoutFormValues>(
     key: K,
@@ -215,7 +276,7 @@ const CheckoutClient = () => {
   const handleSubmit = async () => {
     clearServerError();
 
-    if (!cartData || isCartEmpty) {
+    if (!cartData || !selectedCartData || isCartEmpty) {
       const msg = 'Your cart is empty.';
       setServerError(msg);
       showDangerToast(msg, 'Cannot checkout');
@@ -232,10 +293,29 @@ const CheckoutClient = () => {
       return;
     }
 
-    const payload = mapCartToCheckoutPayload(cartData, values);
+    const payload = mapCartToCheckoutPayload(selectedCartData, values);
+
+    const purchasedCartItemIds = selectedCartData.cart.flatMap((group) =>
+      group.items.map((item) => item.id)
+    );
+
+    const allCartItemIds = cartData.cart.flatMap((group) =>
+      group.items.map((item) => item.id)
+    );
+
+    const purchasedIdSet = new Set(purchasedCartItemIds);
+
+    const clearEntireCart =
+      allCartItemIds.length > 0 &&
+      purchasedCartItemIds.length === allCartItemIds.length &&
+      allCartItemIds.every((id) => purchasedIdSet.has(id));
 
     try {
-      const res = await checkout.mutateAsync(payload);
+      const res = await checkout.mutateAsync({
+        payload,
+        purchasedCartItemIds,
+        clearEntireCart,
+      });
       const txId = res.data.transaction.transactionId;
 
       router.push(`/payment-success?tx=${encodeURIComponent(txId)}`);
@@ -505,7 +585,7 @@ const CheckoutClient = () => {
                   </p>
                 ) : (
                   <div className='space-y-5'>
-                    {cartData?.cart.map((group) => (
+                    {selectedCartData?.cart.map((group) => (
                       <div key={group.restaurant.id} className='min-w-0 space-y-3'>
                         <div className='flex min-w-0 items-center justify-between gap-3'>
                           <div className='flex min-w-0 flex-1 items-center gap-2'>

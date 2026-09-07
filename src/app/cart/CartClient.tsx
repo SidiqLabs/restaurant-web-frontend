@@ -2,12 +2,12 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import CartErrorState from '@/components/cart/CartErrorState';
 import CartItemRow from '@/components/cart/CartItemRow';
-import CartSummary from '@/components/cart/CartSummary';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyIDR } from '@/lib/utils';
 import {
   useCartQuery,
   useClearCartMutation,
@@ -34,6 +34,8 @@ const PAGE_CONTAINER = 'mx-auto w-full max-w-[800px] px-4 pb-16 pt-12 sm:px-6';
 const PAGE_CONTAINER_CENTER = 'mx-auto w-full max-w-[800px] px-4 py-12 sm:px-6';
 
 const CartClient = () => {
+  const router = useRouter();
+
   const {
     data,
     isLoading,
@@ -54,6 +56,63 @@ const CartClient = () => {
     id: number;
     name: string;
   } | null>(null);
+
+  const allItemIds = useMemo(
+    () => data?.cart.flatMap((group) => group.items.map((item) => item.id)) ?? [],
+    [data]
+  );
+
+  const currentItemIdSet = useMemo(() => new Set(allItemIds), [allItemIds]);
+
+  const [selectedItemIds, setSelectedItemIds] =
+    useState<Set<number> | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+
+    const validIds = new Set(allItemIds);
+
+    setSelectedItemIds((previous) => {
+      if (previous === null) {
+        return new Set(allItemIds);
+      }
+
+      return new Set(
+        Array.from(previous).filter((id) => validIds.has(id))
+      );
+    });
+  }, [data, allItemIds]);
+
+  const effectiveSelectedItemIds = selectedItemIds ?? currentItemIdSet;
+
+  const selectionSummary = useMemo(() => {
+    let selectedLines = 0;
+    let selectedQuantity = 0;
+    let totalPrice = 0;
+
+    for (const group of data?.cart ?? []) {
+      for (const item of group.items) {
+        if (!effectiveSelectedItemIds.has(item.id)) continue;
+
+        selectedLines += 1;
+        selectedQuantity += item.quantity;
+        totalPrice += item.itemTotal;
+      }
+    }
+
+    return {
+      selectedLines,
+      selectedQuantity,
+      totalPrice,
+    };
+  }, [data, effectiveSelectedItemIds]);
+
+  const isAllSelected =
+    allItemIds.length > 0 &&
+    effectiveSelectedItemIds.size === allItemIds.length;
+
+  const isSelectAllIndeterminate =
+    effectiveSelectedItemIds.size > 0 && !isAllSelected;
 
   const isEmpty = useMemo(() => {
     return (
@@ -129,6 +188,53 @@ const CartClient = () => {
   const handleRemoveDialogOpenChange = (open: boolean) => {
     if (deleteItem.isPending) return;
     if (!open) setRemoveTarget(null);
+  };
+
+  const setItemSelected = (itemId: number, selected: boolean) => {
+    setSelectedItemIds((previous) => {
+      const next = new Set(previous ?? currentItemIdSet);
+
+      if (selected) {
+        next.add(itemId);
+      } else {
+        next.delete(itemId);
+      }
+
+      return next;
+    });
+  };
+
+  const setRestaurantSelected = (
+    itemIds: number[],
+    selected: boolean
+  ) => {
+    setSelectedItemIds((previous) => {
+      const next = new Set(previous ?? currentItemIdSet);
+
+      for (const itemId of itemIds) {
+        if (selected) {
+          next.add(itemId);
+        } else {
+          next.delete(itemId);
+        }
+      }
+
+      return next;
+    });
+  };
+
+  const setAllSelected = (selected: boolean) => {
+    setSelectedItemIds(selected ? new Set(allItemIds) : new Set());
+  };
+
+  const handleSelectedCheckout = () => {
+    const ids = Array.from(effectiveSelectedItemIds)
+      .filter((id) => currentItemIdSet.has(id))
+      .sort((a, b) => a - b);
+
+    if (ids.length === 0) return;
+
+    router.push(`/checkout?items=${ids.join(',')}`);
   };
 
   if (isLoading) {
@@ -224,6 +330,27 @@ const CartClient = () => {
           >
             <Trash2 className='h-5 w-5' aria-hidden='true' />
           </button>
+        </div>
+
+        <div className='mt-4 flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-3'>
+          <label className='inline-flex cursor-pointer items-center gap-3 text-sm font-medium'>
+            <input
+              type='checkbox'
+              checked={isAllSelected}
+              ref={(node) => {
+                if (node) {
+                  node.indeterminate = isSelectAllIndeterminate;
+                }
+              }}
+              onChange={(event) => setAllSelected(event.target.checked)}
+              className='h-5 w-5 cursor-pointer accent-primary'
+            />
+            <span>Select All</span>
+          </label>
+
+          <span className='text-sm text-muted-foreground'>
+            {selectionSummary.selectedLines} selected
+          </span>
         </div>
 
         <Dialog
@@ -344,6 +471,32 @@ const CartClient = () => {
               {/* Restaurant header row (Figma: chevron sticks to title) */}
               <div className='flex items-center'>
                 <div className='flex min-w-0 items-center gap-3'>
+                  <input
+                    type='checkbox'
+                    checked={group.items.every((item) =>
+                      effectiveSelectedItemIds.has(item.id)
+                    )}
+                    ref={(node) => {
+                      if (!node) return;
+
+                      const selectedCount = group.items.filter((item) =>
+                        effectiveSelectedItemIds.has(item.id)
+                      ).length;
+
+                      node.indeterminate =
+                        selectedCount > 0 &&
+                        selectedCount < group.items.length;
+                    }}
+                    onChange={(event) =>
+                      setRestaurantSelected(
+                        group.items.map((item) => item.id),
+                        event.target.checked
+                      )
+                    }
+                    aria-label={`Select all items from ${group.restaurant.name}`}
+                    className='h-5 w-5 shrink-0 cursor-pointer accent-primary'
+                  />
+
                   {/* Restaurant icon */}
                   <span className='inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted'>
                     <Image
@@ -390,6 +543,10 @@ const CartClient = () => {
                       <CartItemRow
                         item={item}
                         disabled={disabled}
+                        selected={effectiveSelectedItemIds.has(item.id)}
+                        onSelectedChange={(selected) =>
+                          setItemSelected(item.id, selected)
+                        }
                         onDecrease={() => {
                           if (item.quantity === 1) {
                             setRemoveTarget({
@@ -414,14 +571,45 @@ const CartClient = () => {
               {/* Divider dashed */}
               <div className='mt-5 border-t border-dashed border-border/70' />
 
-              {/* Summary per restaurant */}
-              <CartSummary subtotal={group.subtotal} checkoutHref='/checkout' />
+              {/* Restaurant subtotal */}
+              <div className='mt-4 flex items-end justify-between gap-4'>
+                <div>
+                  <p className='text-xs text-muted-foreground'>Total</p>
+                  <p className='mt-1 text-sm font-semibold text-foreground'>
+                    {formatCurrencyIDR(group.subtotal)}
+                  </p>
+                </div>
+              </div>
             </section>
           ))}
         </div>
 
+        <div className='sticky bottom-4 z-20 mt-6 rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='min-w-0'>
+              <p className='text-sm text-muted-foreground'>
+                {selectionSummary.selectedLines === 1
+                  ? '1 item selected'
+                  : `${selectionSummary.selectedLines} items selected`}
+              </p>
+              <p className='mt-1 text-lg font-semibold text-foreground'>
+                {formatCurrencyIDR(selectionSummary.totalPrice)}
+              </p>
+            </div>
+
+            <button
+              type='button'
+              onClick={handleSelectedCheckout}
+              disabled={selectionSummary.selectedLines === 0}
+              className='inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto'
+            >
+              Checkout
+            </button>
+          </div>
+        </div>
+
         {/* Secondary navigation */}
-        <div className='mt-10 flex items-center justify-center'>
+        <div className='mt-8 flex items-center justify-center'>
           <Link
             href='/'
             className='text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground'
