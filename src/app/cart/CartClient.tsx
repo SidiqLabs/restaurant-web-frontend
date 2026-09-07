@@ -2,11 +2,22 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import CartErrorState from '@/components/cart/CartErrorState';
 import CartItemRow from '@/components/cart/CartItemRow';
 import CartSummary from '@/components/cart/CartSummary';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
   useCartQuery,
@@ -38,6 +49,7 @@ const CartClient = () => {
   const [pendingUpdateId, setPendingUpdateId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [serverError, setServerError] = useState<string>('');
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   // UI-only: reveal actions for the selected item (pixel match figma by default)
   const [activeItemId, setActiveItemId] = useState<number | null>(null);
@@ -113,13 +125,20 @@ const CartClient = () => {
 
   const handleClear = async () => {
     setServerError('');
+
     try {
       await clearCart.mutateAsync();
+      setIsClearConfirmOpen(false);
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : 'Failed to clear cart.'
       );
     }
+  };
+
+  const handleClearDialogOpenChange = (open: boolean) => {
+    if (clearCart.isPending) return;
+    setIsClearConfirmOpen(open);
   };
 
   if (isLoading) {
@@ -201,36 +220,70 @@ const CartClient = () => {
         <div className='flex items-center justify-between gap-4'>
           <h1 className='text-2xl font-semibold tracking-tight'>My Cart</h1>
 
-          {/* Clear: keep function, hide visual dominance (pixel match) */}
           <button
             type='button'
-            onClick={handleClear}
+            onClick={() => setIsClearConfirmOpen(true)}
             disabled={clearCart.isPending}
             className={cn(
-              'inline-flex h-10 w-10 items-center justify-center rounded-full border bg-card',
-              'hover:bg-muted disabled:opacity-60',
+              'inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground',
+              'transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
             )}
             aria-label='Clear cart'
             title='Clear cart'
           >
-            <svg
-              width='18'
-              height='18'
-              viewBox='0 0 24 24'
-              fill='none'
-              aria-hidden='true'
-            >
-              <path
-                d='M9 3h6m-9 4h12m-1 0-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7m3 4v8m6-8v8'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              />
-            </svg>
+            <Trash2 className='h-5 w-5' aria-hidden='true' />
           </button>
         </div>
+
+        <Dialog
+          open={isClearConfirmOpen}
+          onOpenChange={handleClearDialogOpenChange}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <div className='min-w-0'>
+                <DialogTitle className='text-lg font-semibold text-foreground'>
+                  Remove all cart items?
+                </DialogTitle>
+                <DialogDescription className='mt-1 text-sm leading-6 text-muted-foreground'>
+                  All items in your cart will be removed. This action cannot be
+                  undone.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+
+            <DialogBody>
+              <p className='text-sm leading-6 text-muted-foreground'>
+                You will need to add the items again if you change your mind.
+              </p>
+            </DialogBody>
+
+            <DialogFooter className='flex-col-reverse sm:flex-row'>
+              <Button
+                type='button'
+                variant='neutral'
+                className='w-full rounded-full sm:w-auto'
+                onClick={() => setIsClearConfirmOpen(false)}
+                disabled={clearCart.isPending}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type='button'
+                variant='destructive'
+                className='w-full rounded-full sm:w-auto'
+                onClick={() => {
+                  void handleClear();
+                }}
+                disabled={clearCart.isPending}
+              >
+                {clearCart.isPending ? 'Removing...' : 'Remove All'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Server error banner (visual only) */}
         {serverError ? (
