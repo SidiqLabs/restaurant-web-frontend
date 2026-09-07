@@ -123,7 +123,7 @@
    * retain their own semantic colors.
    */
   --interaction-hover: var(--neutral-50);
-  --interaction-selected: var(--neutral-100);
+  --interaction-selected: #f7f7f8;
   --interaction-selected-foreground: var(--primary);
   --interaction-focus: var(--brand-300);
 
