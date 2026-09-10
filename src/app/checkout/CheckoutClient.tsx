@@ -459,7 +459,7 @@ const CheckoutClient = () => {
             {/* Delivery Address */}
             <section className='rounded-2xl border bg-card p-4 shadow-sm sm:p-5'>
               <div className='flex min-w-0 items-start'>
-                <div className='min-w-0 max-w-[430px] flex-1'>
+                <div className='w-full min-w-0 max-w-[430px]'>
                   <div className='flex items-center gap-2'>
                     <Image
                       src='/assets/icons/marker-pin-2.svg'
@@ -483,7 +483,9 @@ const CheckoutClient = () => {
                     {!isEditingAddress ? (
                       <>
                         {displayAddress ? (
-                          <p className='text-foreground'>{displayAddress}</p>
+                          <p className='break-words text-foreground'>
+                            {displayAddress}
+                          </p>
                         ) : (
                           <p className='text-muted-foreground'>
                             Please enter your delivery address.
@@ -562,7 +564,6 @@ const CheckoutClient = () => {
                   </button>
                 </div>
 
-                <div className='flex-1' />
               </div>
             </section>
 
