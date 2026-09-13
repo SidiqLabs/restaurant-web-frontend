@@ -4,11 +4,21 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
 import { Toast } from '@/components/common/Toast';
 import { ToastViewport } from '@/components/common/ToastViewport';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   QTY_ICON_ADD,
   QTY_ICON_MINUS,
@@ -35,6 +45,7 @@ import {
   useCheckoutMutation,
 } from '@/services/queries/orders';
 import type { DeliveryLocationDraft } from '@/types/location';
+import type { CartItem } from '@/types/cart';
 
 const paymentOptions = [
   {
@@ -118,6 +129,7 @@ const CheckoutClient = () => {
     isLoading: isCartLoading,
     isError: isCartError,
     error: cartError,
+    refetch: refetchCart,
   } = useCartQuery();
 
   const selectedCartData = useMemo(() => {
@@ -184,6 +196,13 @@ const CheckoutClient = () => {
 
   const [pendingUpdateId, setPendingUpdateId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const itemMutationInFlight = useRef(false);
+  const [removeTarget, setRemoveTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const isItemMutationPending =
+    pendingUpdateId !== null || pendingDeleteId !== null;
 
   // Address edit mode (Change button)
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -274,6 +293,7 @@ const CheckoutClient = () => {
   };
 
   const handleSubmit = async () => {
+    if (itemMutationInFlight.current || checkout.isPending) return;
     clearServerError();
 
     if (!cartData || !selectedCartData || isCartEmpty) {
@@ -397,11 +417,19 @@ const CheckoutClient = () => {
     setIsEditingAddress(false);
   };
 
-  const runItemMutation = async (opts: {
-    id: number;
-    kind: 'update' | 'delete';
-    nextQty?: number;
-  }) => {
+  const runItemMutation = async (
+    opts:
+      | { id: number; kind: 'update'; nextQty: number }
+      | { id: number; kind: 'delete' }
+  ) => {
+    if (itemMutationInFlight.current || checkout.isPending) return;
+    if (
+      opts.kind === 'update' &&
+      (!Number.isInteger(opts.nextQty) || opts.nextQty < 1)
+    ) return;
+
+    // Cart mutations roll back a whole-cart snapshot, so serialize them here.
+    itemMutationInFlight.current = true;
     clearServerError();
 
     if (opts.kind === 'update') setPendingUpdateId(opts.id);
@@ -409,23 +437,39 @@ const CheckoutClient = () => {
 
     try {
       if (opts.kind === 'update') {
-        await updateQty.mutateAsync({ id: opts.id, quantity: opts.nextQty! });
+        await updateQty.mutateAsync({ id: opts.id, quantity: opts.nextQty });
       } else {
         await deleteItem.mutateAsync({ id: opts.id });
         setActiveItemId((prev) => (prev === opts.id ? null : prev));
       }
+      // Join the invalidation's refetch before accepting another interaction.
+      await refetchCart({ cancelRefetch: false });
     } catch (err) {
       const msg = ordersQueryHelpers.getApiErrorMessage(err);
       setServerError(msg);
       showDangerToast(msg, 'Update failed');
     } finally {
+      itemMutationInFlight.current = false;
       if (opts.kind === 'update') setPendingUpdateId(null);
-      if (opts.kind === 'delete') setPendingDeleteId(null);
+      if (opts.kind === 'delete') {
+        setPendingDeleteId(null);
+        setRemoveTarget(null);
+      }
     }
   };
 
-  const handleDecrease = async (id: number, nextQty: number) =>
-    runItemMutation({ id, kind: 'update', nextQty });
+  const requestRemove = (item: CartItem) => {
+    if (itemMutationInFlight.current || checkout.isPending) return;
+    setRemoveTarget({ id: item.id, name: item.menu.foodName });
+  };
+
+  const handleDecrease = (item: CartItem) => {
+    if (item.quantity <= 1) {
+      requestRemove(item);
+      return;
+    }
+    return runItemMutation({ id: item.id, kind: 'update', nextQty: item.quantity - 1 });
+  };
 
   const handleIncrease = async (id: number, nextQty: number) =>
     runItemMutation({ id, kind: 'update', nextQty });
@@ -449,6 +493,55 @@ const CheckoutClient = () => {
           onClose={closeToast}
         />
       </ToastViewport>
+
+      <Dialog
+        open={Boolean(removeTarget)}
+        onOpenChange={(open) => {
+          if (!open && !itemMutationInFlight.current) setRemoveTarget(null);
+        }}
+      >
+        <DialogContent className='max-h-[calc(100dvh-2rem)] overflow-y-auto'>
+          <DialogHeader>
+            <div className='min-w-0'>
+              <DialogTitle className='text-lg font-semibold text-foreground'>
+                Remove this item?
+              </DialogTitle>
+              <DialogDescription className='mt-1 text-sm leading-6 text-muted-foreground'>
+                Removing this item will delete it from your cart.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <DialogBody>
+            <p className='break-words text-sm leading-6 text-muted-foreground'>
+              {removeTarget
+                ? `Are you sure you want to remove ${removeTarget.name}?`
+                : 'Are you sure you want to remove this item?'}
+            </p>
+          </DialogBody>
+          <DialogFooter className='flex-col-reverse sm:flex-row'>
+            <Button
+              type='button'
+              variant='neutral'
+              className='w-full rounded-full sm:w-auto'
+              onClick={() => setRemoveTarget(null)}
+              disabled={isItemMutationPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type='button'
+              variant='destructive'
+              className='w-full rounded-full sm:w-auto'
+              onClick={() => {
+                if (removeTarget) void handleRemove(removeTarget.id);
+              }}
+              disabled={!removeTarget || isItemMutationPending}
+            >
+              {pendingDeleteId !== null ? 'Removing...' : 'Remove'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className={PAGE_CONTAINER}>
         <h1 className='text-3xl font-semibold tracking-tight'>Checkout</h1>
@@ -613,17 +706,12 @@ const CheckoutClient = () => {
 
                         <div className='space-y-3'>
                           {group.items.map((item) => {
-                            const isUpdatingThis =
-                              pendingUpdateId === item.id &&
-                              updateQty.isPending;
-                            const isDeletingThis =
-                              pendingDeleteId === item.id &&
-                              deleteItem.isPending;
+                            const isUpdatingThis = pendingUpdateId === item.id;
+                            const isDeletingThis = pendingDeleteId === item.id;
 
                             const disableItemActions =
                               checkout.isPending ||
-                              isUpdatingThis ||
-                              isDeletingThis;
+                              isItemMutationPending;
 
                             const isActive = activeItemId === item.id;
 
@@ -639,6 +727,7 @@ const CheckoutClient = () => {
                                 tabIndex={0}
                                 onClick={toggleActive}
                                 onKeyDown={(e) => {
+                                  if (e.target !== e.currentTarget) return;
                                   if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault();
                                     toggleActive();
@@ -674,15 +763,10 @@ const CheckoutClient = () => {
                                   <button
                                     type='button'
                                     className='inline-flex h-9 w-9 items-center justify-center rounded-full border hover:bg-muted disabled:opacity-60'
-                                    disabled={
-                                      disableItemActions || item.quantity <= 1
-                                    }
+                                    disabled={disableItemActions}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDecrease(
-                                        item.id,
-                                        item.quantity - 1
-                                      );
+                                      void handleDecrease(item);
                                     }}
                                     aria-label='Decrease quantity'
                                   >
@@ -709,7 +793,7 @@ const CheckoutClient = () => {
                                     disabled={disableItemActions}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleIncrease(
+                                      void handleIncrease(
                                         item.id,
                                         item.quantity + 1
                                       );
@@ -743,7 +827,7 @@ const CheckoutClient = () => {
                                     disabled={disableItemActions}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleRemove(item.id);
+                                      requestRemove(item);
                                     }}
                                   >
                                     {isDeletingThis ? 'Removing...' : 'Remove'}
@@ -863,7 +947,9 @@ const CheckoutClient = () => {
                 <button
                   type='button'
                   onClick={handleSubmit}
-                  disabled={checkout.isPending || isCartLoading || isCartEmpty}
+                  disabled={
+                    checkout.isPending || isItemMutationPending || isCartLoading || isCartEmpty
+                  }
                   className='mt-5 inline-flex h-12 w-full items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60'
                 >
                   {checkout.isPending ? 'Processing...' : 'Buy'}
