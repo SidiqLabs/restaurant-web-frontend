@@ -1,390 +1,143 @@
-# Restaurant Web Frontend – Project Context
+# Restaurant Web Frontend - Project Context
 
-## Authority and Instruction Hierarchy
+## Authority
 
-`PROJECT_CONTEXT.md` is the authoritative project governance and architecture source of truth for this repository. When instructions conflict, follow this order:
+This document is the architecture and governance source of truth for the Sidiq Labs migration clone. Instruction priority:
 
-1. Current explicit user instruction for the active session.
+1. Current explicit user instruction for the active task.
 2. `PROJECT_CONTEXT.md`.
 3. `AGENTS.md`.
 4. `docs/*`.
-5. `README` and historical documents.
-
-`.vercelignore` is deployment configuration only. It is not project governance.
-
-## Assignment
-
-Challenge 9 – Restaurant Web Frontend (Next.js + TypeScript)
-
-Status: ✅ COMPLETED (MVP + UI Polish + Review Feature)
-
----
-
-## Tech Stack (Wajib)
-
-- Next.js (App Router)
-- TypeScript (strict mode enabled)
-- Tailwind CSS
-- shadcn/ui
-- Redux Toolkit (client/UI state only)
-- TanStack Query (server state)
-- Axios
-- Day.js
-
----
-
-## Backend
-
-- Documented production backend reference: `https://be-restaurant-production.up.railway.app`
-- All API requests start with `/api/...`
-- Runtime source code MUST NOT hard-code the backend base URL.
-- Application runtime obtains the base URL from `.env.local` via `NEXT_PUBLIC_API_BASE_URL`.
-- The documented production URL is reference documentation, not permission to duplicate it inside runtime source files.
-
----
-
-## API Scope (Implemented)
-
-### Auth ✅
-
-- POST /api/auth/register
-- POST /api/auth/login
-- GET /api/auth/profile
-- PUT /api/auth/profile
-
-✔ Token stored (localStorage MVP)
-✔ Axios interceptor attaches Authorization header
-✔ Protected endpoints working
-
----
-
-### Restaurants ✅
-
-- GET /api/resto
-- GET /api/resto/{id}
-- GET /api/resto/recommended
-- GET /api/resto/best-seller
-- GET /api/resto/nearby (if used)
-
-✔ Home listing
-✔ Category listing
-✔ Detail page
-✔ Client-side derived filtering
-✔ Server-side location/range filtering
-
----
-
-### Cart ✅ (Optimistic UI)
-
-- GET /api/cart
-- POST /api/cart
-- PUT /api/cart/{id}
-- DELETE /api/cart/{id}
-- DELETE /api/cart
-
-✔ React Query authoritative data
-✔ Optimistic update + rollback
-✔ Redux only for UI helpers
-✔ Quantity controls aligned with design
-
----
-
-### Checkout & Orders ✅
-
-- POST /api/order/checkout
-- GET /api/order/my-order
-
-✔ Adapter: cart → checkout payload
-✔ Payment success page
-✔ Orders history page
-✔ Review button integrated
-
----
-
-### Reviews (Post-MVP) ✅
-
-- POST /api/review
-- GET /api/review/my-reviews
-- GET /api/review/restaurant/{restaurantId}
-- PUT /api/review/{id}
-- DELETE /api/review/{id}
-
-✔ Review modal (controlled)
-✔ 409 handling
-✔ Delete review supported
-✔ Swagger contract respected
-
----
-
-## State Separation Rules (Respected)
-
-### Server State (React Query)
-
-- Auth profile
-- Restaurants
-- Cart
-- Orders
-- Reviews
-
-### Client/UI State (Redux)
-
-- Filters (category, range, price, rating, sort)
-- Drawer/modal state
-- Toast positioning
-- Cart UI helpers (pending flags, temp state)
-
-✔ Redux does NOT store authoritative server data
-
----
-
-## Architecture Decisions (Final)
-
-- Filtering: derived client-side (Redux + query data)
-- Location/range: server-side query param
-- React Query for ALL server data
-- Redux strictly UI intent only
-- HTTP transport and Axios configuration isolated inside `src/services/api/`.
-- Domain server-state integration lives inside `src/services/queries/`, including request functions, query keys, TanStack Query hooks/mutations, and cache invalidation.
-- Auth token via Axios interceptor
-- Adapter pattern used for checkout mapping
-
----
-
-## UI Status
-
-✔ Mobile-first responsive
-✔ next/image used properly
-✔ Design token system respected (globals.css semantic tokens)
-✔ No random hard-coded colors outside design system
-✔ UI Detail pass (Session D2) completed
-✔ Orders, Checkout, Detail, Profile aligned with Figma
-
----
-
-## Design System Interaction Semantics
-
-- Semantic UI tokens are mandatory; avoid arbitrary component-specific colors.
-- Primary actions use the primary brand token and must keep primary hover, focus, and disabled semantics.
-- Secondary, edit, cancel, and dismiss actions are neutral and visually subordinate to primary actions.
-- Destructive styling is reserved for genuinely destructive actions such as delete or permanent removal.
-- Hover, focus, and disabled states must preserve the control's semantic role and readable contrast.
-- Prefer shared semantic component variants over repeated ad-hoc class overrides. Shared component changes require impact audit across existing usages.
-
-## Architectural Protected Paths (Respected)
-
-- src/lib/store.ts
-- src/lib/react-query.ts
-- src/services/api/axios.ts
-- src/services/queries/\*
-- src/features/\*
-- src/types/\*
-- src/lib/utils.ts
-- src/app/providers.tsx
-
-No violations.
-
-### Protected Path Semantics
-
-These paths carry established architectural responsibilities.
-
-They MUST NOT be casually moved, repurposed, duplicated, or bypassed.
-
-A protected path is not automatically immutable. A focused change inside one of these paths is allowed only when:
-
-1. The current task genuinely requires it.
-2. Existing responsibility boundaries are preserved unless an architectural revision is explicitly approved.
-3. The exact target path passes the concurrent work-lock protocol before editing.
-
-### Concurrent Work Locks
-
-Concurrent work locks are separate from architectural protection.
-
-Before modifying any project file:
-
-1. Run `npm run lock:list`.
-2. Identify the exact target file(s).
-3. Run `npm run lock:check -- <path>` for every target.
-4. If a target is ACTIVE or SHARED by another worker, DO NOT modify it.
-5. If FREE, register ownership with `npm run lock:add -- <owner> <scope> <path...>`.
-6. Release ownership after work is completed, committed, or abandoned with `npm run lock:remove -- <owner> <scope>`.
-7. Final task reporting MUST include the result of `npm run lock:list`.
-
-Architectural protection answers **what responsibility a path owns**.
-
-Concurrent work locking answers **who may edit it right now**.
-
----
-
-## Quality Guardrails (Applied)
-
-- One session = one focus.
-- One changeset = one coherent purpose.
-- No god components.
-- No duplicate domain types.
-- Alias `@/` used consistently.
-- No CSR/SSR mixing without reason.
-- Preserve existing working behavior outside the active task scope.
-- Refactoring one concern does not authorize unrelated UI, routing, interaction, data-flow, or responsive changes.
-- Deletion or behavioral replacement requires traceable justification to the current requirement.
+5. README and historical documentation.
+
+`.vercelignore` is deployment configuration, not governance.
+
+## Identity and Lifecycle
+
+- Organization: Sidiq Labs.
+- Project: Restaurant Web Frontend.
+- Repository name: `restaurant-web-frontend`.
+- Consumer-facing brand: Foody.
+- INITIAL_SIDIQLABS_BASELINE: final completed frontend application migrated from historical project source.
+- Baseline commit: `6f325fde326dfd66ab54463ca9f4c5352285235c`.
+- Local annotated baseline tag: `sidiqlabs-baseline`.
+- Preserve the existing license and copyright notices.
+- This is ongoing application maintenance, not a completed-session roadmap. Migration does not imply that every behavior has passed current real-device acceptance.
+
+## Technology and Existing Capabilities
+
+Next.js App Router, React, TypeScript, Tailwind CSS, Radix UI/shadcn-style components, Redux Toolkit, TanStack Query, and Axios are present.
+
+The baseline includes authentication, profile management, restaurant discovery and filtering, cart, checkout, order history, and reviews. Do not infer new features or backend capabilities from a migration task.
+
+## Backend and Environment
+
+- Documented backend reference: `https://be-restaurant-production.up.railway.app`.
+- Runtime code obtains the backend origin from `NEXT_PUBLIC_API_BASE_URL`; never duplicate the documented URL in runtime source.
+- Backend endpoints begin with `/api/`.
+- Local environment values belong in ignored environment files; never commit secrets.
+- `GOOGLE_MAPS_API_KEY` is server-only. Never introduce `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+- Same-origin `/api/geocode` performs authenticated geocoding. Preserve its server-side credential boundary.
+- Migration identity changes do not authorize API, environment, or deployment changes.
+
+Existing API scope:
+
+- Auth: login, register, profile read/update.
+- Restaurants: listing, detail, nearby, recommended, best-seller, and search.
+- Cart: read, add, update, remove item, and clear.
+- Orders: checkout and order history.
+- Reviews: create, own reviews, restaurant reviews, update, and delete.
+
+Use the current services and domain types for exact endpoint and payload contracts. Do not invent unsupported fields or relationships.
+
+## State and Architecture
+
+- React Query is authoritative for server state: profile, restaurants, cart, orders, and reviews.
+- Redux stores client/UI intent, including filters and drawer/modal helpers; it must not become authoritative server storage.
+- Redux slices never call APIs.
+- Filtering combines query data with UI intent; location/range filtering uses the established server parameters.
+- Keep HTTP transport and Axios configuration in `src/services/api/*`.
+- Keep domain requests, query keys, hooks, mutations, and invalidation in `src/services/queries/*`.
+- Domain types belong in `src/types/*`; do not duplicate domain types in components.
+- Shared helpers belong in `src/lib/utils.ts`; preserve existing focused helpers rather than introducing parallel implementations.
+- Imports use `@/` aliases.
+- Page components remain thin; put reusable presentation in components.
+- Keep the existing cart optimistic-update/rollback behavior.
+- Keep checkout payload mapping in its adapter.
+- Profile/home information and transactional delivery destinations are distinct. Preserve existing delivery persistence; do not make profile coordinates an implicit delivery address.
+- Preserve existing token/session storage and Axios auth attachment unless an explicitly scoped task requires a change.
+
+## Protected Responsibilities
+
+These paths carry architectural responsibilities:
+
+- `src/lib/store.ts`
+- `src/lib/react-query.ts`
+- `src/services/api/axios.ts`
+- `src/services/queries/*`
+- `src/features/*`
+- `src/types/*`
+- `src/lib/utils.ts`
+- `src/app/providers.tsx`
+
+Do not casually move, repurpose, duplicate, or bypass them. They are not immutable: a focused edit is allowed when required by the task, responsibilities remain intact, and the exact path is owned through the work-lock protocol.
+
+## Design and Regression Safety
+
+- One task has one coherent focus; no feature hopping or unrelated refactoring.
+- Preserve working behavior, navigation, accessibility, loading/error/empty/success states, and responsive layouts outside the requested change.
+- Use semantic design tokens. Primary actions remain primary; edit/cancel/dismiss actions remain neutral; destructive styling is only for destructive operations.
+- Hover, focus, and disabled states must preserve meaning and contrast.
+- Reuse shared variants; audit affected consumers before changing shared components.
+- Deletion or behavioral replacement requires a task-specific justification.
 - Build success alone is not regression proof.
-- Review the targeted Git diff before completion.
-- Dead code cleanup is allowed only when it is verified and within task scope.
+- For responsive changes, test affected narrow widths and horizontal overflow, preserve desktop behavior, and distinguish browser simulation from real Android acceptance.
 
----
+## Protected Route UX
 
+- Redirect unauthenticated users from genuinely protected routes to Sign In rather than showing raw protected-API 401 errors.
+- Preserve the intended internal route and return after successful login.
+- Validate redirect destinations as internal paths.
+- Gate protected queries when unauthenticated or auth is unresolved.
+- Do not redirect prematurely during auth resolution or refactor global auth for unrelated work.
 
-## Regression Preservation
+## Work Ownership
 
-Existing working behavior is preserved by default.
+Use the existing official tooling before modifying source, configuration, documentation, or tooling:
 
-This includes:
+1. Select the appropriate coordination remote as documented in `docs/work-locks.md`.
+2. Run `npm run lock:list`.
+3. Check every exact target with `npm run lock:check -- <path>`.
+4. Stop for overlapping ACTIVE or SHARED ownership; never take over implicitly.
+5. Acquire with `npm run lock:add -- <owner> <scope> <paths...>`.
+6. Verify ownership, then edit only the owned scope.
+7. Release with `npm run lock:remove -- <owner> <scope>` after completion, commit, or abandonment.
+8. Report the final lock list.
 
-- UI structure and user-visible controls
-- Navigation and routing
-- Responsive behavior
-- Accessibility and keyboard/focus behavior
-- Authentication and protected-route behavior
-- Server-state and client-state ownership
-- API contracts and request semantics
-- Loading, error, empty, and success states
-- Existing critical user journeys
+The official system coordinates local ignored metadata with a Git lock branch. Remote read failure is a stop condition. Acquisition updates remote ownership before local registration; concurrent updates are rejected. Age is audit information, not permission to steal or delete a lock.
 
-Changes outside the active task scope are regressions unless explicitly required by the task or necessary to fix a verified blocking defect.
+Architectural protection defines responsibility; work locks define current ownership. Never substitute manually fabricated locks.
 
-For every modified file, review:
+## Migration-Stage Remotes
 
-- Intended additions
-- Intended modifications
-- Unintended deletions
-- Unrelated behavior changes
-- Scope creep
+This section describes the current migration stage, not the final collaboration setup.
 
-If existing behavior cannot be proven obsolete or incorrect, preserve it.
+- `bootcamp-source`: historical fetch/reference remote only; its push URL must remain disabled. Never push application code, tags, or locks to it.
+- `work-locks`: laptop-local bare Git repository for coordination only. Select it explicitly with `WORK_LOCK_REMOTE=work-locks` when using the lock tooling. Synchronize only the official lock branch, not application history or baseline tags.
+- Future authoritative destination: `https://github.com/SidiqLabs/restaurant-web-frontend`. It is NOT CONFIGURED YET.
 
-**Preservation is the default. Behavioral change and deletion require justification.**
+Do not create a hosted repository, configure its remote, publish application code/tags, or migrate Vercel until explicitly authorized. Do not change the original historical working repository.
 
-## Protected Route / Authentication UX
+## Validation and Completion
 
-- Genuinely protected routes redirect unauthenticated users to Sign In instead of rendering raw protected-API 401 UI.
-- Preserve the intended internal route with `/auth/login?redirect=<internal-path>` and return there after successful login.
-- Protected server queries must be gated while auth is unresolved or when no token exists.
-- Auth-unresolved state must not cause premature redirects or visible protected-content flashes.
-- Redirect destinations must be validated internal application paths; invalid or external values fall back safely.
-- Preserve working authenticated behavior and avoid unrelated global auth refactors.
+Before a substantive change, identify Git state and a local recovery point. Preserve unrelated dirty work and keep recovery artifacts local.
 
----
+After changes:
 
-## Definition of Done – FINAL
-
-Project-level completion requires:
-
-### Functional Correctness
-
-- Requested behavior is implemented and verified.
-- Existing affected behavior is regression-checked.
-- MVP and post-MVP critical user journeys remain functional.
-- API contracts and architectural state ownership remain respected.
-
-### Automated Validation
-
-- TypeScript/type validation passes through the project-supported validation path.
-- Lint passes.
-- Relevant automated tests pass when available.
-- Production build passes.
-- A successful build alone is NOT considered regression proof.
-
-### Runtime / UI Validation
-
-For affected UI flows, verify where applicable:
-
-- Mobile layout
-- Desktop layout
-- Responsive transitions
-- Navigation
-- Keyboard and focus behavior
-- Loading state
-- Error state
-- Empty state
-- Success state
-
-Critical runtime smoke testing is required when the task changes user-visible behavior or integration behavior.
-
-### Change Review
-
-- Targeted `git diff` reviewed against the active task scope.
-- No unintended deletions.
-- No unrelated behavioral changes.
-- No unrelated cleanup or refactoring.
-- Architectural protected paths remain within their documented responsibilities.
-- No hard-coded API base URL is introduced.
-
-### Repository Coordination
-
-- Work lock released after completion, commit, or abandonment.
-- Final `npm run lock:list` verified and reported.
-- Existing unrelated dirty work remains untouched.
-- Recovery points remain local unless explicitly requested otherwise.
-
-### Existing Project Completion Status
-
-✔ All MVP pages work end-to-end
-✔ Auth fully functional
-✔ Cart optimistic UX stable
-✔ Checkout payload correct
-✔ Orders history renders correctly
-✔ Review flow functional
-✔ No hard-coded API URL
-✔ Structure follows project architecture
-✔ UI visually aligned post D2
-
----
-
-## Final Status
-
-- Setup: DONE
-- Auth: DONE
-- Home Data Flow: DONE
-- Home UI: DONE
-- Category + Filters: DONE
-- Cart: DONE
-- Checkout: DONE
-- Orders: DONE
-- Reviews: DONE
-- Refactor & Polish: DONE
-
-Project Status: ✅ COMPLETED
-
-<!-- DISTRIBUTED_WORK_LOCKS_V2_START -->
-## Distributed Work Locks V2 — 2026-09-07
-
-This section supersedes earlier local-only work-lock rules.
-
-Work locking now has two coordinated layers:
-
-- `.work-locks.json` remains local and Git-ignored.
-- `.work-device` remains local and Git-ignored and identifies the clone/device.
-- Cross-device ownership is stored in `locks.json` on remote branch `work-locks`.
-- Routine lock/unlock operations MUST NOT create commits on `main`.
-- `lock:list` and `lock:check` consult local and remote state.
-- Remote coordination read failure is a stop condition.
-- `lock:add` acquires remote ownership atomically before local registration.
-- Concurrent remote updates are rejected.
-- Automatic lock stealing is forbidden.
-- Stale locks remain blocking until explicitly resolved.
-- A path is FREE only when no overlapping local or remote ownership exists.
-- Final DoD requires release plus final `npm run lock:list`.
-
-One-time device setup:
-
-`npm run lock:device -- <device-name>`
-
-Examples: `sidiq-hp`, `sidiq-laptop`.
-
-Remote commands:
-
-`npm run lock:remote:init`
-`npm run lock:remote:status`
-<!-- DISTRIBUTED_WORK_LOCKS_V2_END -->
-
-### CHANGELOG — 2026-09-07
-Work-lock coordination upgraded from local-only to dual-layer local + remote distributed locking for safe HP/laptop parallel work.
+- Run `git diff --check`, project TypeScript checks, `npm run lint`, and `npm run build`.
+- Run targeted tests and runtime QA proportionate to the affected behavior.
+- Review every diff for scope, accidental deletion, architecture violations, secrets, and unrelated changes.
+- Stage only exact intended files; never use broad staging to capture unrelated work.
+- Commit/push only when authorized; never force-push application branches or rewrite history.
+- Report verification limitations honestly, including pending real-device checks.
+- Release ownership and verify the final lock list.

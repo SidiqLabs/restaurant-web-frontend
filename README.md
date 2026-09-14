@@ -1,131 +1,76 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/CX1XKJPp)
-# Challenge 9 - Restaurant Web Frontend (Next JS + TypeScript)
+# Restaurant Web Frontend
 
-# Description
+A restaurant ordering frontend maintained under Sidiq Labs. The consumer-facing application uses the Foody brand.
 
-Membangun Frontend MVP untuk aplikasi Restaurant yang terhubung ke backend. Fokus
-pada alur dasar: eksplor menu, filter & pencarian, keranjang, dan checkout sederhana
+## Overview
 
-# Repo Backend & Figma
+The application supports restaurant discovery, ordering, and account management with a Next.js App Router frontend.
 
-- Backend : https://be-restaurant-api-889893107835.asia-southeast2.run.app/apiswagger/
+## Tech Stack
 
-- [Figma Design Link](https://www.figma.com/design/1By7DB1gDCNEoW62UqLUrA/Restaurant-App?node-id=2210-441096&t=Mb8iKuBNaG5z903g-1)
+- Next.js 16, React 19, and TypeScript
+- Tailwind CSS and shadcn/ui-style components built on Radix UI
+- TanStack Query (React Query)
+- Redux Toolkit
+- Axios
 
-# Tech Stack Wajib
+## Features
 
-- Next JS + TypeScript — framework & type safety
-- Tailwind CSS — styling cepat, utility-first
-- shadcn/ui — komponen UI siap pakai
-- Redux Toolkit — simpan filter, cart, dan state UI lain (client state)
-- TanStack Query (React Query) — fetching & caching server state
-- Optimistic UI — UX responsif(mis. tambah/hapus cart)
-- Day.js — format waktu/tanggal
+- Sign in, registration, profile updates, and protected routes
+- Restaurant browsing, search, categories, and filters
+- Restaurant menus, ratings, and reviews
+- Server-backed cart with optimistic updates
+- Checkout with delivery-location selection and manual address fallback
+- Order history and review submission, editing, and deletion
+- Responsive layouts for desktop and mobile
 
-# MVP Scope (Fitur Minimum)
+Checkout submits orders to the configured backend; this frontend does not implement a payment gateway.
 
-1. Halaman Menu (Home): daftar makanan & minuman, harga, kategori, rating, foto.
-2. Filter & Sort: berdasarkan kategori, harga, rating; simpan di Redux.
-3. Pencarian: search by name/keyword (client-side atau server-side).
-4. Detail/Quick View: modal atau halaman detail sederhana (opsional).
-5. Keranjang (Cart): tambah, ubah qty, hapus item — Optimistic UI.
-6. Checkout Sederhana: form nama/no HP/alamat(tanpa payment gateway).
-7. Riwayat Pesanan (History): daftar pesanan yang pernah dibuat (sederhana).
-8. State Management: server state via React Query, UI state via Redux.
-9. Responsif: mobile-first, minimal breakpoint sm/md/lg.
-10. Aksesibilitas: alt text, focus ring, warna kontras cukup.
-11. Deploy ke vercel. (Optional)
+## Architecture
 
-# Pemisahan State: Redux vs React Query
+- React Query owns server data and cache updates.
+- Redux holds client/UI intent; slices never call APIs.
+- Domain types live in `src/types/*`.
+- HTTP configuration lives in `src/services/api/*`; query hooks and mutations live in `src/services/queries/*`.
+- Reusable components keep route/page components focused.
+- Delivery destinations remain separate from profile identity.
 
-- React Query (Server State): menu, kategori, detail item, order list.
-- Redux Toolkit (Client/UI State): filters, sort, search query, cart, modal open/close.
+See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for architecture and [AGENTS.md](AGENTS.md) for contribution safety.
 
-# Struktur Project (Direkomendasikan)
+## Environment
 
-```
-src/
-├─ app/ # Entry & routing (Vite/CRA: src/main.tsx + src/App.tsx)
-├─ pages/ # Page-level components (Home, Cart, Checkout, Orders)
-├─ features/
-│ ├─ cart/ # Redux slice cart + hooks
-│ └─ filters/ # Redux slice filter/sort/search
-├─ components/ # UI reusable (Navbar, Footer, ProductCard, EmptyState)
-├─ ui/ # shadcn/ui wrappers jika perlu
-├─ services/
-│ ├─ api/ # axios instance, request helpers
-│ └─ queries/ # React Query hooks (useMenusQuery, dst.)
-├─ types/ # TypeScript types (MenuItem, Category, Order, dst.)
-├─ lib/ # utils (formatCurrency, cn, etc.)
-├─ styles/ # global.css, tailwind.css
-├─ assets/ # images/icons jika perlu
-└─ config/ # env, constants, route paths
-```
+Use Node.js 22 and npm. Configure local environment values using `.env.example` as a reference:
 
-# Persiapan Project (Langkah Cepat)
+- `NEXT_PUBLIC_API_BASE_URL`: backend origin used by the frontend.
+- `GOOGLE_MAPS_API_KEY`: server-only credential for geocoding; never expose it through a `NEXT_PUBLIC_` variable.
 
-1. Install Tailwind CSS: sesuai dokumentasi Tailwind (init & konfigurasi).
-2. Install shadcn/ui: setup sesuai docs; generate komponen yang dibutuhkan (Button,
-   Input, Card, Dialog).
-3. Install Redux Toolkit & React Query: `npm i @reduxjs/toolkit react-redux	
-@tanstack/react-query	axios	dayjs`
-4. Siapkan `axios` instance (`/services/api/axios.ts`) dan baseURL dari backend.
-5. Buat store Redux (`/features/store.ts`) dan slice (cart, filters).
-6. Bungkus App dengan `<Provider>`(Redux) dan `<QueryClientProvider>`(React Query).
+Do not commit credentials or local environment files. Without configured geocoding, delivery addresses can still be entered manually.
 
-# Environment & Konfigurasi
+## Development
 
-- Buat `.env` dengan `VITE_API_BASE_URL	=	link	Api (sesuaikan).
-- Axios instance membaca `import.meta.env.VITE_API_BASE_URL`.
-- Hindari hard-code URL API di komponen.
-
-# Getting Started
-
-for this project first, then to run the app, run
-
-```
+```bash
+npm ci
 npm run dev
 ```
 
-on terminal
+Before editing, follow the official [work-lock workflow](docs/work-locks.md), including the migration-stage remote selection.
 
-Study the Figma Design: Open the Figma link and thoroughly examine the design. Understand the layout, spacing, colors, typography, and responsive behavior.
+## Validation and Build
 
-HTML Structure: Open the public/index.html file. Begin by structuring the page with HTML elements that mirror the design.
+```bash
+./node_modules/.bin/tsc --noEmit
+npm run lint
+npm run build
+```
 
-Tailwind CSS: Use Tailwind CSS classes directly within your HTML elements to apply styles. For example:
+Run a completed production build with `npm run start`.
 
-<div class="flex justify-center items-center">...</div>
+## Project Status
 
-<h1 class="text-3xl font-bold text-primary">...</h1>
+Initial Sidiq Labs baseline migrated from the completed application codebase. The planned repository is [SidiqLabs/restaurant-web-frontend](https://github.com/SidiqLabs/restaurant-web-frontend); its remote is not configured or published by this migration stage.
 
-Test in the Browser: Run npm run dev to see it on your browser
+Build success does not replace functional or real-device QA.
 
-Iterate: Continue to refine your HTML and Tailwind CSS until your webpage accurately matches the Figma design.
+## License
 
-# Important Notes
-
-You can modify the folder structure only on src and public folder, don't change anything related to project setup
-
-Tailwind CSS Documentation: Refer to the official Tailwind CSS documentation (https://tailwindcss.com/docs) for information on available classes and how to use them.
-
-Figma Inspection: Use the "Inspect" feature in Figma to get precise measurements, colors, and font styles from the design.
-
-# Evaluation System
-
-The evaluation for this assignment will be based on the following criteria:
-
-1.  **Basic concept and project structure:** How you understand the concept of next js and how you manage the project structure
-2.  **Routing and rendering method:** How you manage routing and rendering method (CSR, SSR, SSG)
-3.  **Next js advance features and optimizations:** How you use next js optimized tools like next/image etc.
-4.  **Deployment & best practice:** How you deploy your app on vercel
-
----
-
-# How to Upload your Challenge
-
-Check this module: [click this](https://orchid-clematis-3e4.notion.site/Panduan-Penggunaan-Git-Untuk-Upload-Assignment-e2d80a19b3684f5d8f1a4209dcf85445?pvs=73)
-
----
-
-🎉 Congratulations on working on this assignment! Utilize the _playground_ feature in Figma to help you understand how the design should look on various devices. Keep experimenting and don't hesitate to look for references if you encounter difficulties. You can definitely produce great work! 🚀 Keep up the spirit, cheers! 🎈
+[MIT](LICENSE). Existing copyright and permission notices are retained.

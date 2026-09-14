@@ -1,114 +1,82 @@
-# Local Work Locks
+# Work Locks
 
-`PROJECT_CONTEXT.md` remains the project source of truth. This document only explains the local soft-lock tooling used to coordinate parallel work.
+`PROJECT_CONTEXT.md` remains the source of truth. Work locks coordinate editing ownership; they are advisory, not filesystem locks.
 
-## Purpose
+## Official Mechanism
 
-The lock system helps agents and developers see local ownership before editing files. It is a soft coordination signal, not a filesystem lock and not a replacement for Git review.
+The existing `scripts/work-locks.mjs` uses:
 
-Lock metadata is stored in `.work-locks.json` at the repository root. That file is local-only, ignored by Git, never pushed, never deployed, and must never contain secrets.
+- Ignored local `.work-device` for device identity.
+- Ignored local `.work-locks.json` for ownership metadata.
+- Local `.work-locks.guard` for atomic coordination.
+- `locks.json` on Git branch `work-locks` for cross-clone ownership.
 
-## Commands
-
-```bash
-npm run lock:list
-npm run lock:check -- <path>
-npm run lock:add -- <owner> <scope> <path...>
-npm run lock:remove -- <owner> <scope>
-```
-
-Example:
-
-```bash
-npm run lock:add -- codex review-fix src/components/resto/ReviewSection.tsx
-npm run lock:check -- src/components/resto/ReviewSection.tsx
-npm run lock:remove -- codex review-fix
-```
-
-## Status Semantics
-
-`ACTIVE` means a path is owned by a worker. Other workers must not modify overlapping exact files or parent/child directory paths.
-
-`SHARED` means the path is known to be shared coordination territory. It still requires explicit coordination before editing and must not be treated as free.
-
-`FREE` is reported by `lock:check` when no overlapping lock is present.
-
-## Parallel Work Rules
-
-Before changing files:
-
-1. List current locks.
-2. Identify the smallest exact file or directory paths required by the task.
-3. Check every target path.
-4. Add a lock before editing.
-5. Stop instead of editing a path owned by another worker.
-6. Release only your own owner/scope after completion, commit, or abandonment.
-
-Do not lock the whole repository or broad directories when a focused file list is enough.
-
-## Failure Behavior
-
-The CLI fails closed when lock state is malformed, path ownership is ambiguous, inputs are invalid, or a path escapes the repository. It does not silently reset corrupted lock files.
-
-Wrong-owner removal is rejected. Duplicate acquisition by the same owner and scope merges missing paths without duplicate path entries.
-
-## Concurrency Limits
-
-This is a local soft-lock helper. Writes use a simple local lock directory and atomic rename to reduce accidental partial writes, but it is not a distributed lock and does not coordinate across machines or Git remotes.
-
-<!-- DISTRIBUTED_WORK_LOCKS_V2_START -->
-
-# Distributed Work Locks V2
-
-This section supersedes earlier local-only coordination notes.
-
-Two coordinated layers are used:
-
-1. Local: `.work-locks.json`
-2. Cross-device: `locks.json` on remote branch `work-locks`
-
-`.work-locks.json`, `.work-device`, and `.work-locks.guard/` remain local-only and Git-ignored.
-
-Normal commands remain:
-
-`npm run lock:list`
-`npm run lock:check -- path/to/file`
-`npm run lock:add -- <owner> <scope> path/to/file`
-`npm run lock:remove -- <owner> <scope>`
-
-Per-device setup:
-
-`npm run lock:device -- sidiq-hp`
-
-or:
-
-`npm run lock:device -- sidiq-laptop`
-
-Remote coordination:
-
-`npm run lock:remote:init`
-`npm run lock:remote:status`
-
-Acquisition fails closed. `lock:add` reads current remote state, checks overlap, and updates using an expected remote commit lease. Concurrent updates are rejected.
-
-Stale locks remain blocking and are never automatically stolen.
-
-Routine lock/unlock activity MUST NOT create commits on `main`.
-
-Final task completion requires successful release and final `npm run lock:list`.
-<!-- DISTRIBUTED_WORK_LOCKS_V2_END -->
+List/check read both layers. Add synchronizes remote ownership before local registration. Acquisition/release use an expected-commit lease on the lock ref; concurrent changes fail closed. These operations create lock-history commits, not commits on application `main`.
 
 ## Remote Selection
 
-Distributed work locks resolve the Git remote in this order:
+The tooling selects:
 
-1. `WORK_LOCK_REMOTE` when explicitly provided.
-2. The tracking remote configured for the current Git branch.
-3. `origin` as the final fallback.
+1. `WORK_LOCK_REMOTE` when set.
+2. The current branch's tracking remote.
+3. `origin` as fallback.
 
-For example, when local `main` tracks `personal/main`, work-lock commands
-automatically use `personal/work-locks`. This allows multiple devices to share
-the same distributed lock state without hard-coding a developer-specific
-remote name.
+`WORK_LOCK_REMOTE_BRANCH` overrides the default `work-locks` branch. Do not change it casually; workers must consult the same namespace.
 
-`WORK_LOCK_REMOTE_BRANCH` can override the default `work-locks` branch name.
+## Current Migration-Stage Setup
+
+This is a temporary laptop migration configuration, not the future hosted Sidiq Labs workflow.
+
+- Project: `/home/sidiq/Documents/SidiqLabs/restaurant-web-frontend`
+- Coordination remote: `work-locks`
+- Bare repository: `/home/sidiq/Documents/SidiqLabs/.work-lock-remotes/restaurant-web-frontend.git`
+- Device identity: `sidiq-laptop`
+- Historical remote: `bootcamp-source`, fetch-only and push-disabled.
+- Future Sidiq Labs GitHub remote: not configured.
+
+Explicit selection is mandatory in every shell session:
+
+```bash
+export WORK_LOCK_REMOTE=work-locks
+npm run lock:list
+```
+
+Alternatively prefix each command with `env WORK_LOCK_REMOTE=work-locks`. The application branch may still track the historical remote; do not rely on that default for coordination.
+
+This setup synchronizes only laptop-local Git lock refs. It does not provide cross-device protection to devices that cannot access this filesystem repository. Do not start parallel editing elsewhere without an explicitly configured shared coordination destination.
+
+## Commands
+
+With `WORK_LOCK_REMOTE` set:
+
+```bash
+npm run lock:device -- sidiq-laptop
+npm run lock:remote:status
+npm run lock:list
+npm run lock:check -- path/to/file
+npm run lock:add -- codex focused-task path/to/file
+npm run lock:remove -- codex focused-task
+npm run lock:list
+```
+
+Device registration is one-time per clone. `npm run lock:remote:init` initializes an approved coordination repository when its lock branch does not exist; do not use it against the historical source.
+
+## Ownership and Failures
+
+- ACTIVE ownership blocks overlapping paths.
+- SHARED ownership is not permission to edit; coordinate explicitly.
+- FREE means neither local nor remote ownership overlaps.
+- Use the smallest scope. Do not lock all of `src/**` for a few-file task.
+- Malformed state, unsafe paths, inaccessible remotes, and concurrent updates fail closed.
+- Never overwrite, bypass, or take over another worker's lock.
+- An old timestamp is diagnostic only; stale locks require explicit resolution.
+- Release only your matching ownership after completion, commit, or abandonment.
+- Manual developers follow the same list/check/acquire/release workflow.
+
+## Publishing Safety
+
+Never push to `bootcamp-source`. Keep its push URL disabled.
+
+The local coordination repository is for `refs/heads/work-locks` only, not application branches, baseline tags, or recovery artifacts. No external publication is required for current lock operations.
+
+A later authorized migration stage must explicitly configure and document shared coordination before hosted or cross-device development. Do not assume the future Sidiq Labs repository already exists.
