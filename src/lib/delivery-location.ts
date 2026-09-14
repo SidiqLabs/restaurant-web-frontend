@@ -30,9 +30,15 @@ export const readDeliveryLocationDraft = (): DeliveryLocationDraft | null => {
       typeof addressDetail !== 'string'
     )
       return null;
-    if (typeof latitude !== 'number' || !Number.isFinite(latitude)) return null;
-    if (typeof longitude !== 'number' || !Number.isFinite(longitude))
-      return null;
+    // Manual delivery addresses have no coordinates; never invent a location.
+    if (latitude !== undefined || longitude !== undefined) {
+      if (
+        typeof latitude !== 'number' || !Number.isFinite(latitude) ||
+        Math.abs(latitude) > 90 ||
+        typeof longitude !== 'number' || !Number.isFinite(longitude) ||
+        Math.abs(longitude) > 180
+      ) return null;
+    }
     if (typeof updatedAt !== 'string' || updatedAt.trim() === '') return null;
 
     return {

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Toast } from '@/components/common/Toast';
 import { ToastViewport } from '@/components/common/ToastViewport';
 import { Button } from '@/components/ui/button';
+import { CheckoutDeliveryAddress } from '@/components/checkout/CheckoutDeliveryAddress';
 import {
   Dialog,
   DialogBody,
@@ -44,7 +45,6 @@ import {
   ordersQueryHelpers,
   useCheckoutMutation,
 } from '@/services/queries/orders';
-import type { DeliveryLocationDraft } from '@/types/location';
 import type { CartItem } from '@/types/cart';
 
 const paymentOptions = [
@@ -204,18 +204,13 @@ const CheckoutClient = () => {
   const isItemMutationPending =
     pendingUpdateId !== null || pendingDeleteId !== null;
 
-  // Address edit mode (Change button)
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const deliveryActionRef = useRef<HTMLButtonElement | null>(null);
 
   // Item action reveal (Remove hidden until row clicked)
   const [activeItemId, setActiveItemId] = useState<number | null>(null);
 
   // Toast (component-based)
   const [toast, setToast] = useState<ToastState>({ open: false });
-
-  // D3.c: keep a copy for UI hints (optional)
-  const [deliveryDraft, setDeliveryDraft] =
-    useState<DeliveryLocationDraft | null>(null);
 
   const closeToast = () => setToast({ open: false });
 
@@ -273,25 +268,6 @@ const CheckoutClient = () => {
     return false;
   };
 
-  /**
-   * If address/phone missing AND inputs are hidden, force show inputs + toast.
-   * Returns true if it forced edit mode.
-   */
-  const ensureAddressInputsVisible = (): boolean => {
-    const addressMissing = values.deliveryAddress.trim().length < 10;
-    const phoneMissing = values.phone.trim().length < 8;
-
-    if (addressMissing || phoneMissing) {
-      setIsEditingAddress(true);
-      showDangerToast(
-        'Delivery address and phone number are required.',
-        'Missing required fields'
-      );
-      return true;
-    }
-    return false;
-  };
-
   const handleSubmit = async () => {
     if (itemMutationInFlight.current || checkout.isPending) return;
     clearServerError();
@@ -303,9 +279,11 @@ const CheckoutClient = () => {
       return;
     }
 
-    if (ensureAddressInputsVisible()) return;
-
     if (!validate()) {
+      if (values.deliveryAddress.trim().length < 10 || values.phone.trim().length < 8) {
+        deliveryActionRef.current?.scrollIntoView({ block: 'center' });
+        deliveryActionRef.current?.focus({ preventScroll: true });
+      }
       showDangerToast(
         'Please fix the form errors before checkout.',
         'Invalid form'
@@ -356,66 +334,24 @@ const CheckoutClient = () => {
     });
   }, [profile?.phone]);
 
-  // D3.c: Prefill address from delivery draft (hydration-safe)
+  // Delivery selection is authoritative, including subsequent changes/removal.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const syncDraft = () => {
       const draft = readDeliveryLocationDraft();
-      setDeliveryDraft(draft);
-
-      // Only prefill if user hasn't typed a valid address yet
-      setValues((prev) => {
-        if (!draft) return prev;
-        if (prev.deliveryAddress.trim().length >= 10) return prev;
-
-        return {
-          ...prev,
-          deliveryAddress: formatDeliveryAddress(draft),
-        };
-      });
+      setValues((prev) => ({
+        ...prev,
+        deliveryAddress: draft ? formatDeliveryAddress(draft) : '',
+      }));
+      setErrors((prev) => ({ ...prev, deliveryAddress: undefined }));
     };
-
     syncDraft();
     window.addEventListener(DELIVERY_LOCATION_EVENT, syncDraft);
-
-    return () => window.removeEventListener(DELIVERY_LOCATION_EVENT, syncDraft);
+    window.addEventListener('storage', syncDraft);
+    return () => {
+      window.removeEventListener(DELIVERY_LOCATION_EVENT, syncDraft);
+      window.removeEventListener('storage', syncDraft);
+    };
   }, []);
-
-  // Change/Save button behavior for address
-  const handleToggleAddressEdit = () => {
-    clearServerError();
-
-    if (!isEditingAddress) {
-      setIsEditingAddress(true);
-      return;
-    }
-
-    const trimmed = values.deliveryAddress.trim();
-    if (trimmed.length < 10) {
-      setErrors((prev) => ({
-        ...prev,
-        deliveryAddress: 'Please enter a valid address (min 10 chars).',
-      }));
-      showDangerToast(
-        'Please enter a valid delivery address.',
-        'Invalid input'
-      );
-      return;
-    }
-
-    const phoneTrimmed = values.phone.trim();
-    if (phoneTrimmed.length < 8) {
-      setErrors((prev) => ({
-        ...prev,
-        phone: 'Phone is required.',
-      }));
-      showDangerToast('Please enter a valid phone number.', 'Invalid input');
-      return;
-    }
-
-    setIsEditingAddress(false);
-  };
 
   const runItemMutation = async (
     opts:
@@ -476,9 +412,6 @@ const CheckoutClient = () => {
 
   const handleRemove = async (id: number) =>
     runItemMutation({ id, kind: 'delete' });
-
-  const displayAddress = values.deliveryAddress.trim();
-  const displayPhone = values.phone.trim();
 
   return (
     <main className='w-full bg-muted/30 px-4 pb-16 pt-10 sm:px-6 lg:px-16'>
@@ -549,116 +482,15 @@ const CheckoutClient = () => {
         <div className='mt-8 grid min-w-0 gap-5 lg:grid-cols-[590px_minmax(0,1fr)]'>
           {/* LEFT */}
           <div className='min-w-0 space-y-5'>
-            {/* Delivery Address */}
-            <section className='rounded-2xl border bg-card p-4 shadow-sm sm:p-5'>
-              <div className='flex min-w-0 items-start'>
-                <div className='w-full min-w-0 max-w-[430px]'>
-                  <div className='flex items-center gap-2'>
-                    <Image
-                      src='/assets/icons/marker-pin-2.svg'
-                      alt=''
-                      aria-hidden='true'
-                      width={32}
-                      height={32}
-                    />
-                    <span className='text-sm font-semibold'>
-                      Delivery Address
-                    </span>
-                  </div>
-
-                  {deliveryDraft && !displayAddress ? (
-                    <p className='mt-2 text-xs text-muted-foreground'>
-                      Detected location is ready. Tap Change to review/edit.
-                    </p>
-                  ) : null}
-
-                  <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
-                    {!isEditingAddress ? (
-                      <>
-                        {displayAddress ? (
-                          <p className='break-words text-foreground'>
-                            {displayAddress}
-                          </p>
-                        ) : (
-                          <p className='text-muted-foreground'>
-                            Please enter your delivery address.
-                          </p>
-                        )}
-
-                        {displayPhone ? (
-                          <p className='text-foreground'>{displayPhone}</p>
-                        ) : (
-                          <p className='text-muted-foreground'>
-                            Please enter your phone number.
-                          </p>
-                        )}
-
-                        {errors.deliveryAddress ? (
-                          <p className='text-xs text-destructive'>
-                            {errors.deliveryAddress}
-                          </p>
-                        ) : null}
-                        {errors.phone ? (
-                          <p className='text-xs text-destructive'>
-                            {errors.phone}
-                          </p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        <textarea
-                          className={cn(
-                            'w-full resize-none rounded-xl border bg-background p-3 text-sm text-foreground outline-none transition-colors',
-                            errors.deliveryAddress
-                              ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/20'
-                              : 'border-input hover:border-muted-foreground/40 focus:border-muted-foreground/60 focus:ring-2 focus:ring-muted-foreground/20'
-                          )}
-                          rows={3}
-                          value={values.deliveryAddress}
-                          onChange={(e) =>
-                            setField('deliveryAddress', e.target.value)
-                          }
-                          placeholder='Jl. Sudirman No. 25, Jakarta Pusat, 10220'
-                        />
-                        {errors.deliveryAddress ? (
-                          <p className='text-xs text-destructive'>
-                            {errors.deliveryAddress}
-                          </p>
-                        ) : null}
-
-                        <input
-                          className={cn(
-                            'w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors',
-                            errors.phone
-                              ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/20'
-                              : 'border-input hover:border-muted-foreground/40 focus:border-muted-foreground/60 focus:ring-2 focus:ring-muted-foreground/20'
-                          )}
-                          value={values.phone}
-                          onChange={(e) => setField('phone', e.target.value)}
-                          placeholder='0812-3456-7890'
-                          inputMode='tel'
-                        />
-                        {errors.phone ? (
-                          <p className='text-xs text-destructive'>
-                            {errors.phone}
-                          </p>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-
-                  <button
-                    type='button'
-                    onClick={handleToggleAddressEdit}
-                    className='mt-[21px] h-10 w-[120px] rounded-full border bg-background text-sm font-medium hover:bg-muted'
-                    disabled={checkout.isPending}
-                  >
-                    {isEditingAddress ? 'Save' : 'Change'}
-                  </button>
-                </div>
-
-              </div>
-            </section>
+            <CheckoutDeliveryAddress
+              address={values.deliveryAddress}
+              phone={values.phone}
+              addressError={errors.deliveryAddress}
+              phoneError={errors.phone}
+              disabled={checkout.isPending}
+              actionRef={deliveryActionRef}
+              onPhoneSave={(phone) => setField('phone', phone)}
+            />
 
             {/* Items */}
             <section className='rounded-2xl border bg-card p-4 shadow-sm sm:p-5'>

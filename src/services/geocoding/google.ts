@@ -1,19 +1,14 @@
 import axios from 'axios';
 
 import { authTokenStorage } from '@/services/api/axios';
-
-type GeocodeResult = {
-  latitude: number;
-  longitude: number;
-  formattedAddress: string;
-};
+import type { GeocodeResult } from '@/types/location';
 
 type GeocodeErrorResponse = {
   message?: string;
 };
 
-export const geocodeAddress = async (
-  address: string
+const requestGeocode = async (
+  input: { address: string } | { latitude: number; longitude: number }
 ): Promise<GeocodeResult> => {
   const token = authTokenStorage.get();
 
@@ -24,8 +19,9 @@ export const geocodeAddress = async (
   try {
     const res = await axios.post<GeocodeResult>(
       '/api/geocode',
-      { address },
+      input,
       {
+        timeout: 15000,
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -45,3 +41,11 @@ export const geocodeAddress = async (
     throw new Error('Failed to detect location. Please try again.');
   }
 };
+
+export const geocodeAddress = (address: string): Promise<GeocodeResult> =>
+  requestGeocode({ address });
+
+export const reverseGeocode = (
+  latitude: number,
+  longitude: number
+): Promise<GeocodeResult> => requestGeocode({ latitude, longitude });

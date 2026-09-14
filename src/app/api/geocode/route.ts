@@ -72,23 +72,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!isRecord(body) || typeof body.address !== 'string') {
+  if (!isRecord(body)) {
     return NextResponse.json(
       { message: 'Address is required.' },
       { status: 400 }
     );
   }
 
-  const address = body.address.trim();
-
-  if (
-    address.length < MIN_ADDRESS_LENGTH ||
-    address.length > MAX_ADDRESS_LENGTH
+  let lookup: { address: string } | { latlng: string };
+  if (typeof body.address === 'string') {
+    const address = body.address.trim();
+    if (
+      address.length < MIN_ADDRESS_LENGTH ||
+      address.length > MAX_ADDRESS_LENGTH
+    ) {
+      return NextResponse.json(
+        { message: `Address must be between ${MIN_ADDRESS_LENGTH} and ${MAX_ADDRESS_LENGTH} characters.` },
+        { status: 400 }
+      );
+    }
+    lookup = { address };
+  } else if (
+    typeof body.latitude === 'number' && Number.isFinite(body.latitude) &&
+    Math.abs(body.latitude) <= 90 &&
+    typeof body.longitude === 'number' && Number.isFinite(body.longitude) &&
+    Math.abs(body.longitude) <= 180
   ) {
+    lookup = { latlng: `${body.latitude},${body.longitude}` };
+  } else {
     return NextResponse.json(
-      {
-        message: `Address must be between ${MIN_ADDRESS_LENGTH} and ${MAX_ADDRESS_LENGTH} characters.`,
-      },
+      { message: 'A valid address or coordinates are required.' },
       { status: 400 }
     );
   }
@@ -136,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     const params = new URLSearchParams({
-      address,
+      ...lookup,
       key: googleApiKey,
     });
 
