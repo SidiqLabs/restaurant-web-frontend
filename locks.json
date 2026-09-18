@@ -1,15 +1,4 @@
 {
   "version": 2,
-  "locks": [
-    {
-      "owner": "sidiq",
-      "scope": "coordination-transaction-test",
-      "device": "sidiq-termux",
-      "paths": [
-        "README.md"
-      ],
-      "startedAt": "2026-09-18T22:37:33.142Z",
-      "updatedAt": "2026-09-18T22:37:33.142Z"
-    }
-  ]
+  "locks": []
 }
