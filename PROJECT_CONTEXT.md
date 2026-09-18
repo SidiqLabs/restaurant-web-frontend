@@ -122,8 +122,8 @@ Architectural protection defines responsibility; work locks define current owner
 The authoritative application remote is `origin`, pointing to `https://github.com/SidiqLabs/restaurant-web-frontend`. Inspect the current checkout and remotes before work; do not assume another clone uses the same aliases.
 
 - Any historical reference remote is fetch-only; retain its disabled push URL. Never publish application code, tags, or locks to it.
-- `work-locks`: laptop-local bare Git repository for coordination only. Select it explicitly with `WORK_LOCK_REMOTE=work-locks` when using the lock tooling. Synchronize only the official lock branch, not application history or baseline tags.
-- Local-only coordination is not cross-device protection. Shared editing requires an explicitly agreed accessible coordination remote.
+- `work-locks`: logical remote for the shared hosted coordination branch. Select it explicitly with `WORK_LOCK_REMOTE=work-locks` when using the lock tooling. Synchronize only the official `work-locks` branch through this coordination path, not application history or tags.
+- Laptop and Termux coordination uses the shared hosted `work-locks` namespace. Every clone must explicitly configure the approved coordination remote and its own device identity.
 
 Publish application code/tags or change deployment only when explicitly authorized. Do not change historical working repositories. Keep machine-specific paths and device configuration in ignored local state, not public documentation.
 

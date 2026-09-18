@@ -41,7 +41,7 @@ npm run lock:list
 
 Alternatively prefix each command with `env WORK_LOCK_REMOTE=work-locks`. The application branch tracks `origin/main`; do not rely on its tracking remote for coordination.
 
-The current local bare remote synchronizes only local Git lock refs. It does not protect devices that cannot access that repository. A fresh clone must have an approved coordination remote configured before editing; never silently initialize locks on the application or historical remote. Do not start cross-device editing without an agreed shared coordination destination.
+The current shared coordination namespace is the `work-locks` branch of the Sidiq Labs repository, accessed through the logical `work-locks` remote. Laptop and Termux workers must explicitly select `WORK_LOCK_REMOTE=work-locks` so they consult the same hosted lock state. A fresh clone must configure the approved coordination remote and register its own device identity before editing.
 
 ## Commands
 
@@ -75,6 +75,6 @@ Device registration is one-time per clone. `npm run lock:remote:init` initialize
 
 Never push to historical reference remotes. Keep their push URLs disabled.
 
-The local coordination repository is for `refs/heads/work-locks` only, not application branches, baseline tags, or recovery artifacts. No external publication is required for current lock operations.
+The coordination namespace is `refs/heads/work-locks` only. Do not use the logical `work-locks` remote to publish application branches, tags, or recovery artifacts.
 
 Configuring hosted or cross-device coordination requires explicit authorization. A hosted application repository alone does not establish shared work-lock coordination.

@@ -19,7 +19,7 @@
 
 - `origin` is the SidiqLabs/restaurant-web-frontend application remote. Verify its URL before any authorized publication.
 - Historical reference remotes are fetch-only. Keep their push URLs disabled; never push branches, tags, or locks to them.
-- `work-locks` points to a local bare repository, exclusively for official lock coordination.
+- `work-locks` is the logical remote used for the shared hosted `work-locks` coordination branch; do not use it for application publication.
 - Before every lock session, set `WORK_LOCK_REMOTE=work-locks` or prefix each lock command with `env WORK_LOCK_REMOTE=work-locks`. Do not rely on the application's tracking remote for lock selection.
 - Only lock refs may be synchronized to the local coordination repository. Do not push application history there.
 - Publishing and deployment require explicit authorization. Local cleanup does not authorize a push.
