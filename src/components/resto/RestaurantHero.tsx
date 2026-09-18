@@ -16,7 +16,6 @@ const formatDistance = (distance?: number) => {
 
 export const RestaurantHero = ({ restaurant }: Props) => {
   const images = restaurant.images ?? [];
-  console.log('Restaurant distance:', restaurant.distance);
 
   const main = images[0] ?? '/assets/images/placeholder-food.jpg';
   const side1 = images[1] ?? main;

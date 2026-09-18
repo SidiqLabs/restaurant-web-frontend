@@ -23,16 +23,14 @@ The tooling selects:
 
 `WORK_LOCK_REMOTE_BRANCH` overrides the default `work-locks` branch. Do not change it casually; workers must consult the same namespace.
 
-## Current Migration-Stage Setup
+## Coordination Setup
 
-This is a temporary laptop migration configuration, not the future hosted Sidiq Labs workflow.
+Application source is hosted at `SidiqLabs/restaurant-web-frontend`. Editing coordination is configured separately and must be agreed before parallel work.
 
-- Project: `/home/sidiq/Documents/SidiqLabs/restaurant-web-frontend`
 - Coordination remote: `work-locks`
-- Bare repository: `/home/sidiq/Documents/SidiqLabs/.work-lock-remotes/restaurant-web-frontend.git`
-- Device identity: `sidiq-laptop`
-- Historical remote: `bootcamp-source`, fetch-only and push-disabled.
-- Future Sidiq Labs GitHub remote: not configured.
+- Inspect its local location with `git remote get-url work-locks`; do not publish machine-specific paths.
+- Register a meaningful device identity through `lock:device`; `.work-device` remains ignored.
+- Historical reference remotes remain fetch-only and push-disabled.
 
 Explicit selection is mandatory in every shell session:
 
@@ -41,9 +39,9 @@ export WORK_LOCK_REMOTE=work-locks
 npm run lock:list
 ```
 
-Alternatively prefix each command with `env WORK_LOCK_REMOTE=work-locks`. The application branch may still track the historical remote; do not rely on that default for coordination.
+Alternatively prefix each command with `env WORK_LOCK_REMOTE=work-locks`. The application branch tracks `origin/main`; do not rely on its tracking remote for coordination.
 
-This setup synchronizes only laptop-local Git lock refs. It does not provide cross-device protection to devices that cannot access this filesystem repository. Do not start parallel editing elsewhere without an explicitly configured shared coordination destination.
+The current local bare remote synchronizes only local Git lock refs. It does not protect devices that cannot access that repository. A fresh clone must have an approved coordination remote configured before editing; never silently initialize locks on the application or historical remote. Do not start cross-device editing without an agreed shared coordination destination.
 
 ## Commands
 
@@ -75,8 +73,8 @@ Device registration is one-time per clone. `npm run lock:remote:init` initialize
 
 ## Publishing Safety
 
-Never push to `bootcamp-source`. Keep its push URL disabled.
+Never push to historical reference remotes. Keep their push URLs disabled.
 
 The local coordination repository is for `refs/heads/work-locks` only, not application branches, baseline tags, or recovery artifacts. No external publication is required for current lock operations.
 
-A later authorized migration stage must explicitly configure and document shared coordination before hosted or cross-device development. Do not assume the future Sidiq Labs repository already exists.
+Configuring hosted or cross-device coordination requires explicit authorization. A hosted application repository alone does not establish shared work-lock coordination.
