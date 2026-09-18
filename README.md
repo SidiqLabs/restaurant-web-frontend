@@ -1,10 +1,10 @@
 # Restaurant Web Frontend
 
-A restaurant ordering frontend maintained under Sidiq Labs. The consumer-facing application uses the Foody brand.
+A portfolio prototype of an online restaurant and food-ordering frontend, maintained under Sidiq Labs. The consumer-facing application uses the Foody brand.
 
 ## Overview
 
-The application supports restaurant discovery, ordering, and account management with a Next.js App Router frontend.
+The application demonstrates restaurant discovery, ordering, and account management with a Next.js App Router frontend. It is a prototype, not a commercial delivery service; no commercial usage or payment processing is claimed.
 
 ## Tech Stack
 
@@ -39,7 +39,7 @@ See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for architecture and [AGENTS.md](AG
 
 ## Environment
 
-Use Node.js 22 and npm. Configure local environment values using `.env.example` as a reference:
+Use Node.js 22 and npm. Copy `.env.example` to `.env.local` and configure your own values:
 
 - `NEXT_PUBLIC_API_BASE_URL`: backend origin used by the frontend.
 - `GOOGLE_MAPS_API_KEY`: server-only credential for geocoding; never expose it through a `NEXT_PUBLIC_` variable.
@@ -49,11 +49,15 @@ Do not commit credentials or local environment files. Without configured geocodi
 ## Development
 
 ```bash
+git clone https://github.com/SidiqLabs/restaurant-web-frontend.git
+cd restaurant-web-frontend
 npm ci
 npm run dev
 ```
 
-Before editing, follow the official [work-lock workflow](docs/work-locks.md), including the migration-stage remote selection.
+Configure `.env.local` before starting the app. `NEXT_PUBLIC_API_BASE_URL` must be a backend origin without a trailing `/api`; request paths already include `/api`. The backend is a separate service and is not included in this repository. Geolocation requires a secure browser context (HTTPS or localhost).
+
+Before editing, follow the official [work-lock workflow](docs/work-locks.md), including explicit coordination-remote selection. Running the prototype does not require acquiring a work lock.
 
 ## Validation and Build
 
@@ -67,7 +71,15 @@ Run a completed production build with `npm run start`.
 
 ## Project Status
 
-Initial Sidiq Labs baseline migrated from the completed application codebase. The planned repository is [SidiqLabs/restaurant-web-frontend](https://github.com/SidiqLabs/restaurant-web-frontend); its remote is not configured or published by this migration stage.
+The current repository is [SidiqLabs/restaurant-web-frontend](https://github.com/SidiqLabs/restaurant-web-frontend). Earlier development history and original license attribution are retained; current documentation describes this independent portfolio prototype.
+
+## Known Limitations
+
+- Live data and account operations depend on the separately hosted backend.
+- No automated application test suite is currently configured.
+- Dependency security advisories remain unresolved. Run `npm audit` and resolve applicable findings before treating this prototype as a hardened public service.
+- The existing lint command uses legacy ESLint tooling and is not sufficient evidence of a complete source lint pass; dependency/tooling alignment needs a separate maintenance task.
+- Real Android acceptance and authenticated user journeys require separate testing. Do not use real personal data for a portfolio demonstration.
 
 Build success does not replace functional or real-device QA.
 

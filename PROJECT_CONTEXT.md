@@ -2,7 +2,7 @@
 
 ## Authority
 
-This document is the architecture and governance source of truth for the Sidiq Labs migration clone. Instruction priority:
+This document is the architecture and governance source of truth for the Sidiq Labs portfolio repository. Instruction priority:
 
 1. Current explicit user instruction for the active task.
 2. `PROJECT_CONTEXT.md`.
@@ -18,11 +18,10 @@ This document is the architecture and governance source of truth for the Sidiq L
 - Project: Restaurant Web Frontend.
 - Repository name: `restaurant-web-frontend`.
 - Consumer-facing brand: Foody.
-- INITIAL_SIDIQLABS_BASELINE: final completed frontend application migrated from historical project source.
-- Baseline commit: `6f325fde326dfd66ab54463ca9f4c5352285235c`.
-- Local annotated baseline tag: `sidiqlabs-baseline`.
+- Positioning: an independent portfolio prototype, not a commercial food-delivery service.
+- Preserve existing Git history and local recovery references; do not rewrite provenance.
 - Preserve the existing license and copyright notices.
-- This is ongoing application maintenance, not a completed-session roadmap. Migration does not imply that every behavior has passed current real-device acceptance.
+- Completion claims require evidence. A build does not imply current real-device or authenticated-flow acceptance.
 
 ## Technology and Existing Capabilities
 
@@ -118,15 +117,15 @@ The official system coordinates local ignored metadata with a Git lock branch. R
 
 Architectural protection defines responsibility; work locks define current ownership. Never substitute manually fabricated locks.
 
-## Migration-Stage Remotes
+## Repository and Publication Safety
 
-This section describes the current migration stage, not the final collaboration setup.
+The authoritative application remote is `origin`, pointing to `https://github.com/SidiqLabs/restaurant-web-frontend`. Inspect the current checkout and remotes before work; do not assume another clone uses the same aliases.
 
-- `bootcamp-source`: historical fetch/reference remote only; its push URL must remain disabled. Never push application code, tags, or locks to it.
+- Any historical reference remote is fetch-only; retain its disabled push URL. Never publish application code, tags, or locks to it.
 - `work-locks`: laptop-local bare Git repository for coordination only. Select it explicitly with `WORK_LOCK_REMOTE=work-locks` when using the lock tooling. Synchronize only the official lock branch, not application history or baseline tags.
-- Future authoritative destination: `https://github.com/SidiqLabs/restaurant-web-frontend`. It is NOT CONFIGURED YET.
+- Local-only coordination is not cross-device protection. Shared editing requires an explicitly agreed accessible coordination remote.
 
-Do not create a hosted repository, configure its remote, publish application code/tags, or migrate Vercel until explicitly authorized. Do not change the original historical working repository.
+Publish application code/tags or change deployment only when explicitly authorized. Do not change historical working repositories. Keep machine-specific paths and device configuration in ignored local state, not public documentation.
 
 ## Validation and Completion
 

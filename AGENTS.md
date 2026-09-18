@@ -15,13 +15,14 @@
 - Review targeted diffs and run project validation. Do not claim runtime or Android verification from a build alone.
 - Preserve the local `sidiqlabs-baseline` tag and existing license notices.
 
-## Migration-Stage Remote Safety
+## Remote Safety
 
-- `bootcamp-source` is historical fetch/reference only. Keep its push URL disabled. Never push application branches, tags, or work locks to it.
+- `origin` is the SidiqLabs/restaurant-web-frontend application remote. Verify its URL before any authorized publication.
+- Historical reference remotes are fetch-only. Keep their push URLs disabled; never push branches, tags, or locks to them.
 - `work-locks` points to a local bare repository, exclusively for official lock coordination.
 - Before every lock session, set `WORK_LOCK_REMOTE=work-locks` or prefix each lock command with `env WORK_LOCK_REMOTE=work-locks`. Do not rely on the application's tracking remote for lock selection.
 - Only lock refs may be synchronized to the local coordination repository. Do not push application history there.
-- The future Sidiq Labs GitHub remote is not configured yet. Creation, configuration, publishing, and deployment migration require explicit authorization.
+- Publishing and deployment require explicit authorization. Local cleanup does not authorize a push.
 - Do not modify the original historical repository.
 
 ## Official Lock Workflow
