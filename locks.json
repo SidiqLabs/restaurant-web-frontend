@@ -1,25 +1,4 @@
 {
   "version": 2,
-  "locks": [
-    {
-      "owner": "sidiq",
-      "scope": "portfolio-readiness-cleanup-termux",
-      "device": "sidiq-termux",
-      "paths": [
-        ".gitignore",
-        "AGENTS.md",
-        "LICENSE",
-        "PROJECT_CONTEXT.md",
-        "README.md",
-        "docs/work-locks.md",
-        "package-lock.json",
-        "package.json",
-        "project-structure.txt",
-        "src/app/debug/routes/page.tsx",
-        "src/components/resto/RestaurantHero.tsx"
-      ],
-      "startedAt": "2026-09-18T23:09:44.864Z",
-      "updatedAt": "2026-09-18T23:09:44.864Z"
-    }
-  ]
+  "locks": []
 }
