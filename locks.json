@@ -7,14 +7,16 @@
       "device": "sidiq-termux",
       "paths": [
         "src/app/category/[slug]/CategoryClient.tsx",
+        "src/components/resto/MenuSection.tsx",
         "src/components/resto/RestaurantHero.tsx",
+        "src/features/filters/filtersSlice.ts",
         "src/services/queries/restaurants.ts",
         "src/services/queries/useMenusQuery.ts",
         "src/services/queries/useRestaurantDetailQuery.ts",
         "src/types/restaurant.ts"
       ],
       "startedAt": "2026-10-24T07:27:36.085Z",
-      "updatedAt": "2026-10-24T07:57:59.435Z"
+      "updatedAt": "2026-10-24T08:06:28.831Z"
     }
   ]
 }
