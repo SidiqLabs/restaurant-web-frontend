@@ -1,4 +1,20 @@
 {
   "version": 2,
-  "locks": []
+  "locks": [
+    {
+      "owner": "codex",
+      "scope": "resmeal-v1-catalog",
+      "device": "sidiq-termux",
+      "paths": [
+        "src/app/category/[slug]/CategoryClient.tsx",
+        "src/components/resto/RestaurantHero.tsx",
+        "src/services/queries/restaurants.ts",
+        "src/services/queries/useMenusQuery.ts",
+        "src/services/queries/useRestaurantDetailQuery.ts",
+        "src/types/restaurant.ts"
+      ],
+      "startedAt": "2026-10-24T07:27:36.085Z",
+      "updatedAt": "2026-10-24T07:27:36.085Z"
+    }
+  ]
 }
